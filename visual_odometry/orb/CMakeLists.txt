@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.9)
 project( orb )
 
-find_package( OpenCV REQUIRED )
+find_package( OpenCV 4 REQUIRED )
 
 include_directories( ${OpenCV_INCLUDE_DIRS} )
 
