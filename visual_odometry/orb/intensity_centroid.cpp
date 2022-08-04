@@ -8,4 +8,5 @@ void CalcIntensityCentroid(const cv::Mat& img，
     std::size_t m10 = 0U;
     int patch_half_size = static_cast<int>(patch_size / 2);
     
+
 }
