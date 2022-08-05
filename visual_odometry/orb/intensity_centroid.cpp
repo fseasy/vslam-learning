@@ -15,9 +15,9 @@ bool CalcIntensityCentroid(const cv::Mat& img,
         || patch_center.y + patch_half_size - 1 >= img.rows) {
         return false;
     }
-    std::size_t m00 = 0U;
-    std::size_t m01 = 0U;
-    std::size_t m10 = 0U;
+    float m00{};
+    float m01{};
+    float m10{};
     for (int dy = -patch_half_size; dy < patch_half_size; ++dy) {
         for (int dx = -patch_half_size; dx < patch_half_size; ++dx) {
             int ix = patch_center.x + dx;
@@ -33,6 +33,7 @@ bool CalcIntensityCentroid(const cv::Mat& img,
     float patch_centroid_y = static_cast<float>(m01) / m00;
     centroid_point.x = patch_centroid_x + patch_center.x;
     centroid_point.y = patch_centroid_y + patch_center.y;
+    return true;
 }
 
 int main(int argc, char* argv[]) {
@@ -42,11 +43,13 @@ int main(int argc, char* argv[]) {
     }
     auto img_fpath = argv[1];
     cv::Mat img = cv::imread(img_fpath, cv::IMREAD_GRAYSCALE);
-    if (img.data == nullptr) {
+    if (!img.data) {
         std::cerr << "img path '" << img_fpath << "' is not a valid gray image." 
             << std::endl;
         return -1;
     }
+    cv::imshow("input-image-show", img);
+    cv::waitKey(5000);
     cv::Point2f center_point(30.f, 30.f);
     cv::Point2f centroid_point{};
     bool is_ok = CalcIntensityCentroid(img, center_point, 16U, centroid_point);

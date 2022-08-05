@@ -1,9 +1,17 @@
 cmake_minimum_required(VERSION 2.9)
-project( orb )
+project(orb)
 
-find_package( OpenCV 4 REQUIRED )
+set(CMAKE_CXX_STANDARD 17)
 
-include_directories( ${OpenCV_INCLUDE_DIRS} )
+if(MSVC)
+  add_compile_options(/W4 /WX)
+else()
+  add_compile_options(-Wall -Wextra -pedantic -Werror)
+endif()
 
-add_executable( intensity_centroid intensity_centroid.cpp )
-target_link_libraries( intensity_centroid ${OpenCV_LIBS} )
+find_package(OpenCV 4 REQUIRED)
+
+include_directories(${OpenCV_INCLUDE_DIRS})
+
+add_executable(intensity_centroid intensity_centroid.cpp)
+target_link_libraries(intensity_centroid ${OpenCV_LIBS})
