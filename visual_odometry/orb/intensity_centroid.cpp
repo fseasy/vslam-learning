@@ -52,8 +52,6 @@ int main(int argc, char* argv[]) {
             << std::endl;
         return -1;
     }
-    cv::imshow("input-image-show", img);
-    cv::waitKey(5000);
     int width = img.cols;
     int height = img.rows;
     cv::Point2f center_point(width / 2, height / 2);
@@ -74,20 +72,34 @@ void drawIntensityCentroid(const cv::Mat& img,
     const cv::Point2f& centroid) {
     cv::Mat img_draw{};
     cv::cvtColor(img, img_draw, cv::COLOR_GRAY2BGR);
-    
+
     // coordinates
+    const int thickness = 1;
     cv::Point2f y_axis_start_pnt(img.cols / 2, img.rows * 0.1f);
     cv::Point2f y_axis_end_pnt(img.cols / 2, img.rows * 0.9f);
     cv::Point2f x_axis_start_pnt(img.cols * 0.1f, img.rows / 2);
     cv::Point2f x_axis_end_pnt(img.cols * 0.9f, img.rows / 2);
-    // cv::arrowedLine(img_draw, y_axis_start_pnt, y_axis_end_pnt, CV_RGB(255, 0, 0), 
-    //     1, cv::LINE_AA, 0, 0.1);
-    // cv::arrowedLine(img_draw, x_axis_start_pnt, x_axis_end_pnt, CV_RGB(255, 0, 0),
-    //     1, cv::LINE_AA, 0, 0.1);
-    cv::Point2f y_axis_tag_pnt = y_axis_end_pnt + cv::Point2f(10, -10);
-    cv::putText(img_draw, "yyyyyyy", y_axis_end_pnt, cv::FONT_HERSHEY_SIMPLEX, 20, CV_RGB(0, 0, 0));
-    cv::Point2f x_axis_tag_pnt = x_axis_end_pnt + cv::Point2f(-10, 10);
-    cv::putText(img_draw, "xzzz", x_axis_tag_pnt, cv::FONT_HERSHEY_SIMPLEX, 20, CV_RGB(0, 0, 0));
+    cv::arrowedLine(img_draw, y_axis_start_pnt, y_axis_end_pnt, CV_RGB(255, 0, 0), 
+        thickness, cv::LINE_AA, 0, 0.05);
+    cv::arrowedLine(img_draw, x_axis_start_pnt, x_axis_end_pnt, CV_RGB(255, 0, 0),
+        thickness, cv::LINE_AA, 0, 0.05);
+    const int fontface = cv::FONT_HERSHEY_COMPLEX_SMALL;
+    const int font_height = 16;
+    double fontscale = cv::getFontScaleFromHeight(fontface, font_height, thickness);
+    cv::Point2f y_axis_tag_pnt = y_axis_end_pnt + 
+        cv::Point2f(10, 0);
+    cv::putText(img_draw, "y", y_axis_tag_pnt, 
+        fontface, fontscale, cv::Scalar::all(0), thickness);
+    cv::Point2f x_axis_tag_pnt = x_axis_end_pnt + 
+        cv::Point2f(-10, 20);
+    cv::putText(img_draw, "x", x_axis_tag_pnt, 
+        fontface, fontscale, cv::Scalar::all(0), thickness);
+
+    cv::drawMarker(img_draw, center, CV_RGB(160, 32, 240), cv::MARKER_TILTED_CROSS, 10, 
+        1, cv::LINE_AA);
+    cv::drawMarker(img_draw, centroid, CV_RGB(255, 255, 0), cv::MARKER_TRIANGLE_UP, 10, 
+        1, cv::LINE_AA);
+
     cv::imshow("centroid-image", img_draw);
-    cv::waitKey(3000);
+    cv::waitKey(0);
 }
