@@ -37,14 +37,14 @@ bool CalcIntensityCentroid(const cv::Mat& img,
     return true;
 }
 
-void drawIntensityCentroid(const cv::Mat& img, 
+cv::Mat drawIntensityCentroid(const cv::Mat& img, 
     const cv::Point2f& center, 
     const cv::Point2f& centroid,
     int patch_size);
 
 int main(int argc, char* argv[]) {
-    if (argc != 2) {
-        std::cerr << "usage: " << argv[0] << " img-path" << std::endl;
+    if (argc != 3) {
+        std::cerr << "usage: " << argv[0] << " img-path output-img-path" << std::endl;
         return -1;
     }
     auto img_fpath = argv[1];
@@ -70,11 +70,13 @@ int main(int argc, char* argv[]) {
     float theta = atan2f(centroid_point.y - center_point.y, 
         centroid_point.x - center_point.x);
     std::cerr << "theta = " << theta << ", " << theta / M_PI * 180 << std::endl;
-    drawIntensityCentroid(img, center_point, centroid_point, patch_size);
+    cv::Mat img_draw = drawIntensityCentroid(img, center_point, centroid_point, patch_size);
+    const char* output_img_path = argv[2];
+    cv::imwrite(output_img_path, img_draw);
     return 0;
 }
 
-void drawIntensityCentroid(const cv::Mat& img, 
+cv::Mat drawIntensityCentroid(const cv::Mat& img, 
     const cv::Point2f& center, 
     const cv::Point2f& centroid,
     int patch_size) {
@@ -126,4 +128,5 @@ void drawIntensityCentroid(const cv::Mat& img,
     cv::line(img_draw, center, theta_end_pnt, CV_RGB(240, 215, 0), 1, cv::LINE_AA);
     cv::imshow("centroid-image", img_draw);
     cv::waitKey(0);
+    return img_draw;
 }
