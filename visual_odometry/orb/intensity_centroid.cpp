@@ -113,9 +113,17 @@ void drawIntensityCentroid(const cv::Mat& img,
     // center, centroid
     cv::drawMarker(img_draw, center, CV_RGB(160, 32, 240), cv::MARKER_TILTED_CROSS, 10, 
         1, cv::LINE_AA);
-    cv::drawMarker(img_draw, centroid, CV_RGB(255, 255, 0), cv::MARKER_TRIANGLE_UP, 10, 
+    cv::drawMarker(img_draw, centroid, CV_RGB(240, 215, 0), cv::MARKER_TRIANGLE_UP, 10, 
         1, cv::LINE_AA);
-
+    // theta
+    float dy = centroid.y - center.y;
+    float dx = centroid.x - center.x;
+    float hypotenuse = std::hypotf(dy, dx);
+    const float theta_line_radius = center.x;
+    cv::Point2f theta_end_pnt = cv::Point2f(
+        theta_line_radius * dx / hypotenuse, theta_line_radius * dy / hypotenuse
+    ) + center;
+    cv::line(img_draw, center, theta_end_pnt, CV_RGB(240, 215, 0), 1, cv::LINE_AA);
     cv::imshow("centroid-image", img_draw);
     cv::waitKey(0);
 }
