@@ -4,7 +4,7 @@
 
 #include <opencv2/opencv.hpp>
 
-#include "cv_helper.hpp"
+void clog_kps(const std::string& prompt, const std::vector<cv::KeyPoint>& kps);
 
 int main(int argc, char* argv[]) {
     if (argc < 3) {
@@ -33,20 +33,16 @@ int main(int argc, char* argv[]) {
     cv::Mat img1_show{};
     cv::drawKeypoints(img1, img1_kps, img1_show, cv::Scalar::all(-1),  
         cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
-    cv::imshow("key-points1", img1_show);
-    for (auto& p : img1_kps) {
-        std::clog 
-            << p.angle << " " << p.octave << " " 
-            << p.class_id << " " << p.pt << " " << p.response << " "
-            << p.size << "\n";
-    }
+    cv::imshow("fast key-points1", img1_show);
+
     cv::Mat img2_show{};
     cv::drawKeypoints(img2, img2_kps, img2_show, cv::Scalar::all(-1),
          cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
-    cv::imshow("key-points2", img2_show);
+    cv::imshow("fast key-points2", img2_show);
+    clog_kps("fast-kp2", img2_kps);
 
     // using ORB
-    cv::Ptr<cv::ORB> orb = cv::ORB::create(500, 1.2f, 1);
+    cv::Ptr<cv::ORB> orb = cv::ORB::create(50, 1.2f, 1);
     orb->detect(img1, img1_kps);
     orb->detect(img2, img2_kps);
 
@@ -54,6 +50,22 @@ int main(int argc, char* argv[]) {
     cv::drawKeypoints(img2, img2_kps, img2_show);
     cv::imshow("orb-kp1", img1_show);
     cv::imshow("orb-kp2", img2_show);
+    clog_kps("orb-kp2", img2_kps);
     cv::waitKey(0);
+    cv::imwrite("orb.kp.png", img1_show);
     return 0;
+}
+
+void clog_kps(const std::string& prompt, const std::vector<cv::KeyPoint>& kps) {
+    std::clog << "================= " << prompt << " =======================\n";
+    for (auto& p : kps) {
+        std::clog 
+            << "angle=" <<  p.angle 
+            << " octave=" << p.octave 
+            << " class_id=" << p.class_id 
+            << " pt=" << p.pt 
+            << " response=" << p.response 
+            << " size=" << p.size << "\n";
+    }
+    std::clog << "----------------------------------------------------------\n";
 }
