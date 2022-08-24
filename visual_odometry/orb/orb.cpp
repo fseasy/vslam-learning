@@ -4,33 +4,53 @@
 
 #include <opencv2/opencv.hpp>
 
-void load_img_and_detect(const std::string& img_path, 
+#include "utils/timer.hpp"
+
+bool load_img_and_detect_compute(const std::string& img_path, 
     cv::Ptr<cv::ORB> orb, 
     cv::Mat& img, 
-    std::vector<cv::KeyPoint>& kps);
+    std::vector<cv::KeyPoint>& kps,
+    cv::Mat& descriptors);
 
 int main(int argc, char* argv[]) {
     if (argc < 3) {
         std::cerr << "usage: " << argv[0] << " img1 img2\n";
         return -1;
     }
-    const std::string img1_path = argv[1];
-    const std::string img2_path = argv[2];
-    cv::Ptr<cv::ORB> orb = cv::ORB::create(500, 1.2f, 8);
-    std::pair<cv::Mat, cv::Mat> img_pair{};
- 
+    std::vector<std::string> img_paths{argv[1], argv[2]};
+    cv::Ptr<cv::ORB> orb = cv::ORB::create(200, 1.2f, 8);
+    std::vector<cv::Mat> imgs(2);
+    std::vector<std::vector<cv::KeyPoint>> kps(2);
+    std::vector<cv::Mat> descriptors(2);
+    for (std::size_t i = 0U; i < 2U; ++i) {
+        bool ok{};
+        {
+            AutoTimer timer("load-img-detect-compute-" + std::to_string(i));
+            ok = load_img_and_detect_compute(img_paths[i], 
+                orb, imgs[i], kps[i], descriptors[i]); 
+            auto& d = descriptors[i];
+            std::clog << "descriptor size = (row:" << d.rows << ", cols:"
+                << d.cols << ", channel:" << d.channels() 
+                << ") type = " << d.type()
+                << "\n";
+        }
+        if (!ok) { return -1; }
+    }
+
     return 0;
 }
 
-bool load_img_and_detect(const std::string& img_path, 
+bool load_img_and_detect_compute(const std::string& img_path, 
     cv::Ptr<cv::ORB> orb, 
     cv::Mat& img, 
-    std::vector<cv::KeyPoint>& kps) {
+    std::vector<cv::KeyPoint>& kps,
+    cv::Mat& descriptors) {
     img = cv::imread(img_path, cv::IMREAD_COLOR);
     if (!img.data) {
         std::cerr << "Load img " << img_path << " failed\n";
         return false;
     }
     orb->detect(img, kps);
+    orb->compute(img, kps, descriptors);
     return true;
 }
