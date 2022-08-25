@@ -35,6 +35,8 @@ int main(int argc, char* argv[]) {
     cv::Ptr<cv::DescriptorMatcher> bf_matcher = cv::DescriptorMatcher::create(
         cv::DescriptorMatcher::MatcherType::BRUTEFORCE_HAMMING
     );
+    std::vector<cv::DMatch> matches{};
+
     return 0;
 }
 
@@ -55,4 +57,16 @@ bool load_img_and_detect_compute(const std::string& img_path,
     orb->compute(img, kps, descriptors);
     timer.duration_ms("compute");
     return true;
+}
+
+void match_and_draw(const std::vetor<cv::Mat>& descriptors, 
+    const std::vector<cv::Mat>& imgs,
+    const std::vector<std::vector<cv::KeyPoint>>& kps,
+    std::vector<cv::DMatch>& matches) {
+    AutoTimer timer("match-and-draw");
+    bf_matcher->match(descriptors[0], descriptors[1], matches);
+    timer.duration_ms("match");
+    cv::Mat draw_img{};
+    cv::drawMatches(imgs[0], kps[0], imgs[1], kps[1], matches, draw_img);
+    cv::imshow("1-1 match result", draw_img);
 }
