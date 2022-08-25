@@ -23,20 +23,18 @@ int main(int argc, char* argv[]) {
     std::vector<std::vector<cv::KeyPoint>> kps(2);
     std::vector<cv::Mat> descriptors(2);
     for (std::size_t i = 0U; i < 2U; ++i) {
-        bool ok{};
-        {
-            AutoTimer timer("load-img-detect-compute-" + std::to_string(i));
-            ok = load_img_and_detect_compute(img_paths[i], 
+        bool ok = load_img_and_detect_compute(img_paths[i], 
                 orb, imgs[i], kps[i], descriptors[i]); 
-            auto& d = descriptors[i];
-            std::clog << "descriptor size = (row:" << d.rows << ", cols:"
-                << d.cols << ", channel:" << d.channels() 
-                << ") type = " << d.type()
-                << "\n";
-        }
+        auto& d = descriptors[i];
+        std::clog << "descriptor size = (row:" << d.rows << ", cols:"
+            << d.cols << ", channel:" << d.channels() 
+            << ") type = " << d.type()
+            << "\n";
         if (!ok) { return -1; }
     }
-
+    cv::Ptr<cv::DescriptorMatcher> bf_matcher = cv::DescriptorMatcher::create(
+        cv::DescriptorMatcher::MatcherType::BRUTEFORCE_HAMMING
+    );
     return 0;
 }
 
@@ -45,12 +43,16 @@ bool load_img_and_detect_compute(const std::string& img_path,
     cv::Mat& img, 
     std::vector<cv::KeyPoint>& kps,
     cv::Mat& descriptors) {
+    AutoTimer timer("load-img-detect-compute");
     img = cv::imread(img_path, cv::IMREAD_COLOR);
+    timer.duration_ms("imread");
     if (!img.data) {
         std::cerr << "Load img " << img_path << " failed\n";
         return false;
     }
     orb->detect(img, kps);
+    timer.duration_ms("detect");
     orb->compute(img, kps, descriptors);
+    timer.duration_ms("compute");
     return true;
 }
