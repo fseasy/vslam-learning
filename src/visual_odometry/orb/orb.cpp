@@ -1,16 +1,22 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <algorithm>
 
 #include <opencv2/opencv.hpp>
 
-#include "utils/timer.hpp"
+#include <src/utils/timer.hpp>
 
 bool load_img_and_detect_compute(const std::string& img_path, 
     cv::Ptr<cv::ORB> orb, 
     cv::Mat& img, 
     std::vector<cv::KeyPoint>& kps,
     cv::Mat& descriptors);
+
+void match_and_draw(const std::vector<cv::Mat>& descriptors, 
+    const std::vector<cv::Mat>& imgs,
+    const std::vector<std::vector<cv::KeyPoint>>& kps,
+    std::vector<cv::DMatch>& matches);
 
 int main(int argc, char* argv[]) {
     if (argc < 3) {
@@ -32,11 +38,9 @@ int main(int argc, char* argv[]) {
             << "\n";
         if (!ok) { return -1; }
     }
-    cv::Ptr<cv::DescriptorMatcher> bf_matcher = cv::DescriptorMatcher::create(
-        cv::DescriptorMatcher::MatcherType::BRUTEFORCE_HAMMING
-    );
-    std::vector<cv::DMatch> matches{};
 
+    std::vector<cv::DMatch> matches{};
+    match_and_draw(descriptors, imgs, kps, matches);
     return 0;
 }
 
@@ -59,14 +63,32 @@ bool load_img_and_detect_compute(const std::string& img_path,
     return true;
 }
 
-void match_and_draw(const std::vetor<cv::Mat>& descriptors, 
+void match_and_draw(const std::vector<cv::Mat>& descriptors, 
     const std::vector<cv::Mat>& imgs,
     const std::vector<std::vector<cv::KeyPoint>>& kps,
     std::vector<cv::DMatch>& matches) {
+    cv::Ptr<cv::DescriptorMatcher> bf_matcher = cv::DescriptorMatcher::create(
+        cv::DescriptorMatcher::MatcherType::BRUTEFORCE_HAMMING);
     AutoTimer timer("match-and-draw");
     bf_matcher->match(descriptors[0], descriptors[1], matches);
     timer.duration_ms("match");
+    std::cerr << "Matches size = " << matches.size() << "\n";
     cv::Mat draw_img{};
     cv::drawMatches(imgs[0], kps[0], imgs[1], kps[1], matches, draw_img);
     cv::imshow("1-1 match result", draw_img);
+
+    auto [min_match, max_match] = std::minmax_element(matches.begin(), matches.end());
+    std::cerr << "Matches min distance = " << min_match->distance
+        << ", max distance = " << max_match->distance << "\n"; 
+    float threshold = std::max<float>(min_match->distance * 2, 30);
+    matches.erase(
+        std::remove_if(matches.begin(), matches.end(), 
+            [threshold](const cv::DMatch& m){ return m.distance >= threshold; }
+        ),
+        matches.end()
+    );
+    std::cerr << "Good matches size = " << matches.size() << "\n";
+    cv::drawMatches(imgs[0], kps[0], imgs[1], kps[1], matches, draw_img);
+    cv::imshow("good match result", draw_img);
+    cv::waitKey(0);
 }
