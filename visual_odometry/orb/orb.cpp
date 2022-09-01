@@ -69,4 +69,7 @@ void match_and_draw(const std::vetor<cv::Mat>& descriptors,
     cv::Mat draw_img{};
     cv::drawMatches(imgs[0], kps[0], imgs[1], kps[1], matches, draw_img);
     cv::imshow("1-1 match result", draw_img);
+    // Select Good Matches
+    std::vector<cv::DMatch> good_matches{};
+    
 }
