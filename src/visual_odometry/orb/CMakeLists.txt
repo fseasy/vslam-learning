@@ -9,7 +9,7 @@ else()
   add_compile_options(-Wall -Wextra -pedantic)
 endif()
 
-set(WORK_ROOT "../..")
+set(WORK_ROOT "../../..")
 set(UTILS_DIR ${WORK_ROOT}/utils)
 file(GLOB UTILS_HEADERS ${UTILS_DIR}/*.h*)
 
