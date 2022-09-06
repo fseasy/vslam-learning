@@ -3,12 +3,15 @@
 #include <opencv2/opencv.hpp>
 #include <src/visual_odometry/orb/orb.h>
 
-std::vector<std::vector<cv::Point>> _get_match_points(
+std::vector<std::vector<cv::Point2f>> _get_match_points(
     const std::vector<std::vector<cv::KeyPoint>>& kps,
     const std::vector<cv::DMatch>& matches);
-void eipolar_geometry(const std::vector<std::vector<cv::Point2f>>& match_points, 
+
+void epipolar_geometry(
+    const std::vector<std::vector<cv::Point2f>>& match_points, 
     const cv::Mat& camera_intrinsic,
-    cv::Mat& R, cv::Mat& t);
+    cv::Mat& R, 
+    cv::Mat& t);
 
 int main(int argc, char* argv[]) {
     if (argc != 3) {
@@ -32,18 +35,8 @@ int main(int argc, char* argv[]) {
     if (match_and_draw(descriptors, imgs, kps, matches)) {
         cv::waitKey(50000);
     }
-    auto kp2pnts_fn = [](const auto& kps, const ) {
-        std::vector<cv::Point2f> pnts{};
-        pnts.reserve(kps.size());
-        std::transform(kps.cbegin(), kps.cend(), std::back_inserter(pnts), 
-            [](const auto& kp){ return kp.pt; });
-        return pnts;
-    };
-    std::vector<std::vector<cv::Point2f>> pnts{
-        kp2pnts_fn(kps.at(0)),
-        kp2pnts_fn(kps.at(1))
-    };
 
+    auto match_points = _get_match_points(kps, matches);
     cv::Mat camera_intrinsic = (cv::Mat_<double>(3, 3) 
         << 520.9, 0, 325.1, 
            0, 521.0, 249.7, 
@@ -51,17 +44,52 @@ int main(int argc, char* argv[]) {
         );
     cv::Mat R{};
     cv::Mat t{};
-    epipopar_geometry(pnts, matches, camera_intrinsic, R, t);
+    epipolar_geometry(match_points, camera_intrinsic, R, t);
 }
 
-std::vector<std::vector<cv::Point>> _get_match_points(
+std::vector<std::vector<cv::Point2f>> _get_match_points(
     const std::vector<std::vector<cv::KeyPoint>>& kps,
     const std::vector<cv::DMatch>& matches) {
-    
+    std::vector<std::vector<cv::Point2f>> match_points(2);
+    auto sz = matches.size();
+    auto& first_pnts = match_points.at(0);
+    auto& second_pnts = match_points.at(1);
+    first_pnts.reserve(sz);
+    second_pnts.reserve(sz);
+    for (auto& match : matches) {
+        first_pnts.push_back(kps.at(0).at(match.queryIdx).pt);
+        second_pnts.push_back(kps.at(1).at(match.trainIdx).pt);
+    }
+    return match_points;
 }
 
-void eipolar_geometry(const std::vector<std::vector<cv::Point2f>>& match_points, 
+void epipolar_geometry(
+    const std::vector<std::vector<cv::Point2f>>& match_points, 
     const cv::Mat& camera_intrinsic,
-    cv::Mat& R, cv::Mat& t) {
-    
+    cv::Mat& R, 
+    cv::Mat& t) {
+    std::clog << "Epipolar Geometry get match point pairs " << match_points.size() << std::endl;
+    AutoTimer timer("epipolar geometry");
+    // for new version, may be try: cv::USAC_MAGSAC, see
+    // https://opencv.org/evaluating-opencvs-new-ransacs/
+    cv::Mat outlier_indicator{};
+    cv::Mat E = cv::findEssentialMat(match_points.at(0), match_points.at(1), 
+        camera_intrinsic, cv::RANSAC, 
+        0.999, 1.0, outlier_indicator);
+    timer.duration_ms("find-E");
+    cv::Mat recover_outliter_indicator = outlier_indicator.clone();
+    // 
+    // Cheirality check: triangulated 3D points should have positive depth
+    // 内部步骤可以参考 OpenCV api文档，或者 https://stackoverflow.com/questions/65771642/opencv-recoverpose-from-essential-matrix-e
+    int cheirality_check_pnt_num = cv::recoverPose(E, 
+        match_points.at(0), match_points.at(1), camera_intrinsic,
+        R, t, recover_outliter_indicator);
+    timer.duration_ms("decompose-E");
+    std::clog << "E = \n" << E << "\n";
+    std::clog << "in find-E, outlier num = " << cv::sum(1 - outlier_indicator) << "\n";
+    std::clog << "R = \n" << R << "\n";
+    std::clog << "t = " << t << "\n";
+    std::clog << "in recover-Pose, outlier num = " << cv::sum(1 - recover_outliter_indicator) 
+        << "\n"
+        << "cheirality check cnt = " << cheirality_check_pnt_num << "\n";
 }
