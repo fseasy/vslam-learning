@@ -13,6 +13,12 @@ void epipolar_geometry(
     cv::Mat& R, 
     cv::Mat& t);
 
+void homography(
+    const std::vector<std::vector<cv::Point2f>>& match_points, 
+    const cv::Mat& camera_intrinsic,
+    cv::Mat& R, 
+    cv::Mat& t);
+
 int main(int argc, char* argv[]) {
     if (argc != 3) {
         std::cerr << "param error.\n"
@@ -45,6 +51,7 @@ int main(int argc, char* argv[]) {
     cv::Mat R{};
     cv::Mat t{};
     epipolar_geometry(match_points, camera_intrinsic, R, t);
+    homography(match_points, camera_intrinsic, R, t);
 }
 
 std::vector<std::vector<cv::Point2f>> _get_match_points(
@@ -68,7 +75,8 @@ void epipolar_geometry(
     const cv::Mat& camera_intrinsic,
     cv::Mat& R, 
     cv::Mat& t) {
-    std::clog << "Epipolar Geometry get match point pairs " << match_points.size() << std::endl;
+    std::clog << "Epipolar Geometry get match point pairs " << match_points.size() 
+        << std::endl;
     AutoTimer timer("epipolar geometry");
     // for new version, may be try: cv::USAC_MAGSAC, see
     // https://opencv.org/evaluating-opencvs-new-ransacs/
@@ -85,10 +93,13 @@ void epipolar_geometry(
         match_points.at(0), match_points.at(1), camera_intrinsic,
         R, t, recover_outliter_indicator);
     timer.duration_ms("decompose-E");
+    cv::Mat rvec{};
+    cv::Rodrigues(R, rvec);
     std::clog << "E = \n" << E << "\n";
     std::clog << "in find-E, outlier num = " << cv::sum(1 - outlier_indicator) << "\n";
     std::clog << "R = \n" << R << "\n";
-    std::clog << "t = " << t << "\n";
+    std::clog << "t = " << t.t() << "\n";
+    std::clog << "Rodrigues = " << rvec.t() << "\n";
     cv::Mat r_norm(2, 3, CV_32FC1);
     for (auto i = 0; i < 3; ++i) {
         r_norm.at<float>(0, i, 0) = cv::norm(R.row(i));
@@ -99,4 +110,71 @@ void epipolar_geometry(
     std::clog << "in recover-Pose, outlier num = " << cv::sum(1 - recover_outliter_indicator) 
         << "\n"
         << "cheirality check cnt = " << cheirality_check_pnt_num << "\n";
+}
+
+void homography(
+    const std::vector<std::vector<cv::Point2f>>& match_points, 
+    const cv::Mat& camera_intrinsic,
+    cv::Mat& R, 
+    cv::Mat& t) {
+    std::clog << "Homography get match points size = " << match_points.size() << "\n";
+    AutoTimer timer("homography");
+    cv::Mat H = cv::findHomography(match_points.at(0), match_points.at(1), 
+        cv::RANSAC, 3);
+    timer.duration_ms("find-homography");
+    // method1: use decomose-homography
+    // see: https://docs.opencv.org/3.4/de/d45/samples_2cpp_2tutorial_code_2features2D_2Homography_2decompose_homography_8cpp-example.html#a22
+    std::vector<cv::Mat> Rs{};
+    std::vector<cv::Mat> ts{};
+    std::vector<cv::Mat> normals{};
+    int solutions = cv::decomposeHomographyMat(H, camera_intrinsic, Rs, ts, normals);
+    timer.duration_ms("decompose-homography");
+    std::clog << "H = " << H << "\n";
+    std::clog << "solutions = " << solutions << "\n";
+    std::clog << Rs.size() << "\n";
+    cv::Mat rvec{};
+    for (int i = 0; i < solutions; ++i) {
+        std::clog << "===> solution " << i + 1 << "\n";
+        std::clog << "R = " << Rs.at(i) << " t = " << ts.at(i).t() 
+            << " normal = " << normals.at(i).t() << "\n";
+        cv::Rodrigues(Rs.at(i), rvec);
+        std::clog << "Rodrigues: " << rvec.t() << "\n";
+    }
+    // method2: use hand-recover
+    // see: https://docs.opencv.org/3.4/d0/d92/samples_2cpp_2tutorial_code_2features2D_2Homography_2pose_from_homography_8cpp-example.html#a16
+    double norm = cv::norm(H.col(0));
+    H /= norm;
+    cv::Mat c1 = H.col(0);
+    cv::Mat c2 = H.col(1);
+    cv::Mat c3 = c1.cross(c2);
+
+    t = H.col(2);
+    R = cv::Mat(3, 3, CV_64F);
+    c1.copyTo(R.col(0));
+    c2.copyTo(R.col(1));
+    c3.copyTo(R.col(2));
+    std::clog << "R(before polar decomposition):\n" << R;
+    double Rdet = cv::determinant(R);
+    std::clog << " determinant = " << Rdet << "\n";
+    cv::Rodrigues(R, rvec);
+    std::clog << "Rodrigues = " << rvec.t() << "\n";
+    cv::Mat W{};
+    cv::Mat U{};
+    cv::Mat Vt{};
+    cv::SVDecomp(R, W, U, Vt);
+    R = U * Vt;
+    Rdet = cv::determinant(R);
+    if (Rdet < 0) {
+        Vt.row(2) = Vt.row(2) * -1;
+        R = U * Vt;
+        Rdet = cv::determinant(R);
+        std::clog << "determinant is negative. re calc = " << Rdet << "\n";
+    }
+    std::clog << "R(after polar decomposition):\n" << R << " determinant = " << Rdet << "\n";
+    std::clog << "t = " << t.t() << "\n";
+    cv::Rodrigues(R, rvec);
+    std::clog << "Rodrigues = " << rvec.t() << "\n";
+    // 从结果来看，
+    // 1. 调用 decomposeH 的结果的四组里，第一组结果和前面对极集合的结果很接近！
+    // 2. 而下面这种手工做法，结果和上面方法的结果都差挺远的。感觉不太靠谱。
 }
