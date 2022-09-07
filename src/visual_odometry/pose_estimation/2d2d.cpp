@@ -89,6 +89,13 @@ void epipolar_geometry(
     std::clog << "in find-E, outlier num = " << cv::sum(1 - outlier_indicator) << "\n";
     std::clog << "R = \n" << R << "\n";
     std::clog << "t = " << t << "\n";
+    cv::Mat r_norm(2, 3, CV_32FC1);
+    for (auto i = 0; i < 3; ++i) {
+        r_norm.at<float>(0, i, 0) = cv::norm(R.row(i));
+        r_norm.at<float>(1, i, 0) = cv::norm(R.col(i));
+    }
+    auto t_norm = cv::norm(t);
+    std::clog << "R norm2 = " << r_norm << " " << "t norm2 = " << t_norm << "\n";
     std::clog << "in recover-Pose, outlier num = " << cv::sum(1 - recover_outliter_indicator) 
         << "\n"
         << "cheirality check cnt = " << cheirality_check_pnt_num << "\n";
