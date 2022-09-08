@@ -124,6 +124,9 @@ void verify_epipolar(
     const cv::Mat& camera_intrinsic,
     const cv::Mat& R,
     const cv::Mat& t) {
+    // It is really don't same with previous E. we checked the slambook2 code's result.
+    // it may because we abandon the minimum eigenvalue in SVD
+    // 如何衡量两个矩阵间的误差呢？这是个问题。
     // 1. E = t^R
     // t_x = 
     // | 0   | -a3 | a2 |
@@ -135,15 +138,8 @@ void verify_epipolar(
         t_(2, 0), 0, -t_(0, 0),
         -t_(1, 0), t_(0, 0), 0
     );
-    cv::Mat t_x1 = (cv::Mat_<double>(3, 3) <<
-        0, -t.at<double>(2, 0), t.at<double>(1, 0),
-        t.at<double>(2, 0), 0, -t.at<double>(0, 0),
-        -t.at<double>(1, 0), t.at<double>(0, 0), 0
-    );
     cv::Mat E = t_x * R;
-    cv::Mat E1 = t_x1 * R;
     std::clog << "E = t^R = " << E << "\n"; 
-    std::clog << "E1 = t^R = " << E1 << "\n"; 
 
 }
 

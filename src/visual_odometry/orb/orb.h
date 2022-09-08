@@ -65,7 +65,8 @@ bool match_and_draw(const std::vector<cv::Mat>& descriptors,
     float threshold = std::max<float>(min_match->distance * 2, 30);
     matches.erase(
         std::remove_if(matches.begin(), matches.end(), 
-            [threshold](const cv::DMatch& m){ return m.distance >= threshold; }
+            // > or >=, will influence the final match points, and then the E, R, t
+            [threshold](const cv::DMatch& m){ return m.distance > threshold; }
         ),
         matches.end()
     );
