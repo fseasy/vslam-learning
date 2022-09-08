@@ -13,6 +13,12 @@ void epipolar_geometry(
     cv::Mat& R, 
     cv::Mat& t);
 
+void verify_epipolar(
+    const std::vector<std::vector<cv::Point2f>>& match_points,
+    const cv::Mat& camera_intrinsic,
+    const cv::Mat& R,
+    const cv::Mat& t);
+
 void homography(
     const std::vector<std::vector<cv::Point2f>>& match_points, 
     const cv::Mat& camera_intrinsic,
@@ -51,6 +57,7 @@ int main(int argc, char* argv[]) {
     cv::Mat R{};
     cv::Mat t{};
     epipolar_geometry(match_points, camera_intrinsic, R, t);
+    verify_epipolar(match_points, camera_intrinsic, R, t);
     homography(match_points, camera_intrinsic, R, t);
 }
 
@@ -110,6 +117,34 @@ void epipolar_geometry(
     std::clog << "in recover-Pose, outlier num = " << cv::sum(1 - recover_outliter_indicator) 
         << "\n"
         << "cheirality check cnt = " << cheirality_check_pnt_num << "\n";
+}
+
+void verify_epipolar(
+    const std::vector<std::vector<cv::Point2f>>& match_points,
+    const cv::Mat& camera_intrinsic,
+    const cv::Mat& R,
+    const cv::Mat& t) {
+    // 1. E = t^R
+    // t_x = 
+    // | 0   | -a3 | a2 |
+    // | a3  | 0   | -a1|
+    // | -a2 | a1  | 0  |
+    const cv::Mat_<double>& t_ = static_cast<cv::Mat_<double>>(t);
+    cv::Mat t_x = (cv::Mat_<double>(3, 3) <<
+        0, -t_(2, 0), t_(1, 0),
+        t_(2, 0), 0, -t_(0, 0),
+        -t_(1, 0), t_(0, 0), 0
+    );
+    cv::Mat t_x1 = (cv::Mat_<double>(3, 3) <<
+        0, -t.at<double>(2, 0), t.at<double>(1, 0),
+        t.at<double>(2, 0), 0, -t.at<double>(0, 0),
+        -t.at<double>(1, 0), t.at<double>(0, 0), 0
+    );
+    cv::Mat E = t_x * R;
+    cv::Mat E1 = t_x1 * R;
+    std::clog << "E = t^R = " << E << "\n"; 
+    std::clog << "E1 = t^R = " << E1 << "\n"; 
+
 }
 
 void homography(
