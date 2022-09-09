@@ -11,13 +11,15 @@ void epipolar_geometry(
     const std::vector<std::vector<cv::Point2f>>& match_points, 
     const cv::Mat& camera_intrinsic,
     cv::Mat& R, 
-    cv::Mat& t);
+    cv::Mat& t,
+    cv::Mat& E);
 
 void verify_epipolar(
     const std::vector<std::vector<cv::Point2f>>& match_points,
     const cv::Mat& camera_intrinsic,
     const cv::Mat& R,
-    const cv::Mat& t);
+    const cv::Mat& t,
+    const cv::Mat& E);
 
 void homography(
     const std::vector<std::vector<cv::Point2f>>& match_points, 
@@ -56,8 +58,9 @@ int main(int argc, char* argv[]) {
         );
     cv::Mat R{};
     cv::Mat t{};
-    epipolar_geometry(match_points, camera_intrinsic, R, t);
-    verify_epipolar(match_points, camera_intrinsic, R, t);
+    cv::Mat E{};
+    epipolar_geometry(match_points, camera_intrinsic, R, t, E);
+    verify_epipolar(match_points, camera_intrinsic, R, t, E);
     homography(match_points, camera_intrinsic, R, t);
 }
 
@@ -81,14 +84,15 @@ void epipolar_geometry(
     const std::vector<std::vector<cv::Point2f>>& match_points, 
     const cv::Mat& camera_intrinsic,
     cv::Mat& R, 
-    cv::Mat& t) {
-    std::clog << "Epipolar Geometry get match point pairs " << match_points.size() 
+    cv::Mat& t,
+    cv::Mat& E) {
+    std::clog << "Epipolar Geometry get match point pairs " << match_points.at(0).size() 
         << std::endl;
     AutoTimer timer("epipolar geometry");
     // for new version, may be try: cv::USAC_MAGSAC, see
     // https://opencv.org/evaluating-opencvs-new-ransacs/
     cv::Mat outlier_indicator{};
-    cv::Mat E = cv::findEssentialMat(match_points.at(0), match_points.at(1), 
+    E = cv::findEssentialMat(match_points.at(0), match_points.at(1), 
         camera_intrinsic, cv::RANSAC, 
         0.999, 1.0, outlier_indicator);
     timer.duration_ms("find-E");
@@ -123,8 +127,9 @@ void verify_epipolar(
     const std::vector<std::vector<cv::Point2f>>& match_points,
     const cv::Mat& camera_intrinsic,
     const cv::Mat& R,
-    const cv::Mat& t) {
-    // It is really don't same with previous E. we checked the slambook2 code's result.
+    const cv::Mat& t,
+    const cv::Mat& E) {
+    // 跟前面 RANSAC 计算的E不一样！ 试了 slambook2 代码的结果，和这里结果一样。
     // it may because we abandon the minimum eigenvalue in SVD
     // 如何衡量两个矩阵间的误差呢？这是个问题。
     // 1. E = t^R
@@ -138,9 +143,35 @@ void verify_epipolar(
         t_(2, 0), 0, -t_(0, 0),
         -t_(1, 0), t_(0, 0), 0
     );
-    cv::Mat E = t_x * R;
-    std::clog << "E = t^R = " << E << "\n"; 
+    cv::Mat E_rebuild = t_x * R;
+    std::clog << "E = t^R = " << E_rebuild << "\n"; 
+    std::clog << "original E = " << E << "\n";
 
+    auto _pixel_pnt2camera_3d = [&camera_intrinsic](const cv::Point2f& p) -> cv::Mat {
+        auto K_ = static_cast<cv::Mat_<double>>(camera_intrinsic);
+        double cx = K_(0, 2);
+        double cy = K_(1, 2);
+        double fx = K_(0, 0);
+        double fy = K_(1, 1);
+        return (cv::Mat_<double>(3, 1) << 
+            (p.x - cx) / fx,
+            (p.y - cy) / fy,
+            1
+        );
+    };
+    auto _epipolar_constraint = [](const auto& p1, const auto& p2, const auto& E) {
+        cv::Mat constraint = p2.t() * E * p1;
+        return constraint.at<double>(0, 0);
+    };
+
+    for (std::size_t i = 0U; i < match_points.at(0).size(); ++i) {
+        auto p1 = _pixel_pnt2camera_3d(match_points.at(0).at(i));
+        auto p2 = _pixel_pnt2camera_3d(match_points.at(1).at(i));
+        double constraint_rebuild = _epipolar_constraint(p1, p2, E_rebuild);
+        double constraint_original = _epipolar_constraint(p1, p2, E);
+        std::clog << "point pair " << i << ", rebuild epipolar constraint = " << constraint_rebuild
+            << ", original constraint = " << constraint_original << "\n";
+    }
 }
 
 void homography(
@@ -148,7 +179,7 @@ void homography(
     const cv::Mat& camera_intrinsic,
     cv::Mat& R, 
     cv::Mat& t) {
-    std::clog << "Homography get match points size = " << match_points.size() << "\n";
+    std::clog << "Homography get match points size = " << match_points.at(0).size() << "\n";
     AutoTimer timer("homography");
     cv::Mat H = cv::findHomography(match_points.at(0), match_points.at(1), 
         cv::RANSAC, 3);
