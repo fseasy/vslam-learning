@@ -21,6 +21,12 @@ void verify_epipolar(
     const cv::Mat& t,
     const cv::Mat& E);
 
+void verify_F_and_draw_epilines(
+    const std::vector<std::vector<cv::Point2f>>& match_points,
+    const cv::Mat& camera_intrinsic,
+    const cv::Mat& E
+);
+
 void homography(
     const std::vector<std::vector<cv::Point2f>>& match_points, 
     const cv::Mat& camera_intrinsic,
@@ -47,7 +53,7 @@ int main(int argc, char* argv[]) {
     }
     std::vector<cv::DMatch> matches{};
     if (match_and_draw(descriptors, imgs, kps, matches)) {
-        cv::waitKey(50000);
+        cv::waitKey(1);
     }
 
     auto match_points = _get_match_points(kps, matches);
@@ -61,6 +67,7 @@ int main(int argc, char* argv[]) {
     cv::Mat E{};
     epipolar_geometry(match_points, camera_intrinsic, R, t, E);
     verify_epipolar(match_points, camera_intrinsic, R, t, E);
+    verify_F_and_draw_epilines(match_points, camera_intrinsic, E);
     homography(match_points, camera_intrinsic, R, t);
 }
 
@@ -173,6 +180,28 @@ void verify_epipolar(
             << ", original constraint = " << constraint_original << "\n";
     }
 }
+
+void verify_F_and_draw_epilines(
+    const std::vector<std::vector<cv::Point2f>>& match_points,
+    const cv::Mat& camera_intrinsic,
+    const cv::Mat& E) {
+    // 1. calc from findFundamentalMat
+    cv::Mat mask{};
+    cv::Mat F_calc = cv::findFundamentalMat(match_points.at(0), match_points.at(1), 
+        cv::FM_RANSAC, 3., 0.99, mask);
+    std::cerr << "F(findFundamentalMat) = " << F_calc << "\n";
+    // 2. calc from K^{-T} E K^{-1}
+    cv::Mat K_inv = camera_intrinsic.inv();
+    cv::Mat F_from_E = K_inv.t() * E * K_inv;
+    std::cerr << "F(K^{-T}EK^{-1}) = " << F_from_E << "\n"; 
+    // norm F[2][2] = 1
+    auto times = 1. / F_from_E.at<double>(2, 2);
+    F_from_E *= times;
+    std::cerr << "F(K^{-T}EK^{-1} x norm) = " << F_from_E << "\n";
+    // 同样是不等的…… 目前还不知道如何去衡量两个 F 的差距
+    
+}
+
 
 void homography(
     const std::vector<std::vector<cv::Point2f>>& match_points, 
