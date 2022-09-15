@@ -1,4 +1,5 @@
 #include <iostream>
+#include <random>
 
 #include <opencv2/opencv.hpp>
 #include <src/visual_odometry/orb/orb.h>
@@ -200,6 +201,29 @@ void verify_F_and_draw_epilines(
     std::cerr << "F(K^{-T}EK^{-1} x norm) = " << F_from_E << "\n";
     // 同样是不等的…… 目前还不知道如何去衡量两个 F 的差距
     
+    // 下面画极线。 
+    // 图1上的点，对应的极线，是在图2上的！反之亦然。
+    cv::Mat epilines_for_pnt1{};
+    cv::computeCorrespondEpilines(match_points.at(0), 1, F_calc, 
+        epilines_for_pnt1);
+    cv::Mat epilines_for_pnt2{};
+    cv::computeCorrespondEpilines(match_points.at(1), 2, F_calc, 
+        epilines_for_pnt2);
+
+    std::mtd
+    auto draw_epilines = [](auto& target_img, auto& source_img,
+        const auto& pnt_in_target_img, const auto& pnt_in_source_img
+        ) {
+        // epilines: ax + by + c = 0, know a, b, c. draw line.
+        // as https://docs.opencv.org/4.x/da/de9/tutorial_py_epipolar_geometry.html
+        // use 2 points
+        // 1. let x = 0; y = -c / b
+        // 2. let x = img.col, y = - (c + a x) / b
+        // because we need the line full cross the img.
+        // so let x = 0, col is a easy way. or let y = 0, row is another.
+        // 取 x = 0 and y = 0 对应的两个点，不能达成线完全覆盖图片的目的！
+        
+    };
 }
 
 
