@@ -209,9 +209,15 @@ void verify_F_and_draw_epilines(
     cv::Mat epilines_for_pnt2{};
     cv::computeCorrespondEpilines(match_points.at(1), 2, F_calc, 
         epilines_for_pnt2);
+    
+    std::clog << "epilines size = " << epilines_for_pnt1.size() 
+        << "type = " << epilines_for_pnt1.type() << "\n";
 
-    std::mtd
-    auto draw_epilines = [](auto& target_img, auto& source_img,
+    std::mt19937 _gen(1234U);
+    std::uniform_int_distribution<uchar> _dist(0, 255);
+    auto uchar_dist = std::bind(_dist, _gen);
+    auto draw_epilines = [&uchar_dist](const cv::Mat& epilines,
+        auto& target_img, auto& source_img,
         const auto& pnt_in_target_img, const auto& pnt_in_source_img
         ) {
         // epilines: ax + by + c = 0, know a, b, c. draw line.
@@ -222,7 +228,11 @@ void verify_F_and_draw_epilines(
         // because we need the line full cross the img.
         // so let x = 0, col is a easy way. or let y = 0, row is another.
         // 取 x = 0 and y = 0 对应的两个点，不能达成线完全覆盖图片的目的！
-        
+        auto pnt_sz = pnt_in_target_img.size();
+        for (auto i = 1U; i < pnt_sz; ++i) {
+            cv::Scalar color(uchar_dist(), uchar_dist(), uchar_dist());
+
+        }
     };
 }
 
