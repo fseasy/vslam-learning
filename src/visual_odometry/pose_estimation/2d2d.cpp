@@ -252,7 +252,7 @@ void verify_F_and_draw_epilines(
     cv::Mat draw_img1 = imgs.at(0).clone();
     cv::Mat draw_img2 = imgs.at(1).clone();
     draw_epilines(epilines_for_pnt1, draw_img2, draw_img1, 
-        match_points.at(0), match_points.at(1));
+        match_points.at(1), match_points.at(0));
     cv::imshow("epilines in img2", draw_img2);
     cv::waitKey(0);
 }
