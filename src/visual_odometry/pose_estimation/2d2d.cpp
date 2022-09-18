@@ -25,7 +25,8 @@ void verify_epipolar(
 void verify_F_and_draw_epilines(
     const std::vector<std::vector<cv::Point2f>>& match_points,
     const cv::Mat& camera_intrinsic,
-    const cv::Mat& E
+    const cv::Mat& E,
+    const std::vector<cv::Mat>& imgs
 );
 
 void homography(
@@ -68,7 +69,7 @@ int main(int argc, char* argv[]) {
     cv::Mat E{};
     epipolar_geometry(match_points, camera_intrinsic, R, t, E);
     verify_epipolar(match_points, camera_intrinsic, R, t, E);
-    verify_F_and_draw_epilines(match_points, camera_intrinsic, E);
+    verify_F_and_draw_epilines(match_points, camera_intrinsic, E, imgs);
     homography(match_points, camera_intrinsic, R, t);
 }
 
@@ -185,7 +186,8 @@ void verify_epipolar(
 void verify_F_and_draw_epilines(
     const std::vector<std::vector<cv::Point2f>>& match_points,
     const cv::Mat& camera_intrinsic,
-    const cv::Mat& E) {
+    const cv::Mat& E,
+    const std::vector<cv::Mat>& imgs) {
     // 1. calc from findFundamentalMat
     cv::Mat mask{};
     cv::Mat F_calc = cv::findFundamentalMat(match_points.at(0), match_points.at(1), 
@@ -218,7 +220,7 @@ void verify_F_and_draw_epilines(
     auto uchar_dist = std::bind(_dist, _gen);
     auto draw_epilines = [&uchar_dist](const cv::Mat& epilines,
         auto& target_img, auto& source_img,
-        const auto& pnt_in_target_img, const auto& pnt_in_source_img
+        const auto& pnts_in_target_img, const auto& pnts_in_source_img
         ) {
         // epilines: ax + by + c = 0, know a, b, c. draw line.
         // as https://docs.opencv.org/4.x/da/de9/tutorial_py_epipolar_geometry.html
@@ -228,12 +230,31 @@ void verify_F_and_draw_epilines(
         // because we need the line full cross the img.
         // so let x = 0, col is a easy way. or let y = 0, row is another.
         // 取 x = 0 and y = 0 对应的两个点，不能达成线完全覆盖图片的目的！
-        auto pnt_sz = pnt_in_target_img.size();
-        for (auto i = 1U; i < pnt_sz; ++i) {
+        auto pnt_sz = pnts_in_target_img.size();
+        for (auto i = 0U; i < pnt_sz; ++i) {
             cv::Scalar color(uchar_dist(), uchar_dist(), uchar_dist());
-
+            auto& epiline = epilines.at<cv::Vec3f>(i);
+            int x1 = 0;
+            int y1 = - epiline(2) / epiline(1);
+            int x2 = target_img.cols;
+            int y2 = - (epiline(2) - epiline(0) * x2) / epiline(1);
+            cv::Point p1{x1, y1};
+            cv::Point p2{x2, y2};
+            cv::line(target_img, p1, p2, color, 1, cv::LINE_AA, 0);
+            // draw correspond points in 2 img.
+            auto& target_p = pnts_in_target_img.at(i);
+            cv::circle(target_img, target_p, 3, color, 1, cv::LINE_AA, 0);
+            auto& source_p = pnts_in_source_img.at(i);
+            cv::circle(source_img, source_p, 3, color, 1, cv::LINE_AA, 0);
+            if (i > 7) {break;}
         }
     };
+    cv::Mat draw_img1 = imgs.at(0).clone();
+    cv::Mat draw_img2 = imgs.at(1).clone();
+    draw_epilines(epilines_for_pnt1, draw_img2, draw_img1, 
+        match_points.at(0), match_points.at(1));
+    cv::imshow("epilines in img2", draw_img2);
+    cv::waitKey(0);
 }
 
 
