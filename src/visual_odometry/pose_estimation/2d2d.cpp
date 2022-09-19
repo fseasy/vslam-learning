@@ -213,14 +213,15 @@ void verify_F_and_draw_epilines(
         epilines_for_pnt2);
     
     std::clog << "epilines size = " << epilines_for_pnt1.size() 
-        << "type = " << epilines_for_pnt1.type() << "\n";
+        << " type = " << epilines_for_pnt1.type() << "\n";
 
-    std::mt19937 _gen(1234U);
+    std::mt19937 _gen(12304U);
     std::uniform_int_distribution<uchar> _dist(0, 255);
     auto uchar_dist = std::bind(_dist, _gen);
     auto draw_epilines = [&uchar_dist](const cv::Mat& epilines,
         auto& target_img, auto& source_img,
-        const auto& pnts_in_target_img, const auto& pnts_in_source_img
+        const auto& pnts_in_target_img, const auto& pnts_in_source_img,
+        const cv::Mat& mask
         ) {
         // epilines: ax + by + c = 0, know a, b, c. draw line.
         // as https://docs.opencv.org/4.x/da/de9/tutorial_py_epipolar_geometry.html
@@ -232,27 +233,33 @@ void verify_F_and_draw_epilines(
         // 取 x = 0 and y = 0 对应的两个点，不能达成线完全覆盖图片的目的！
         auto pnt_sz = pnts_in_target_img.size();
         for (auto i = 0U; i < pnt_sz; ++i) {
+            uchar pnt_mask = mask.at<uchar>(i);
+            if (pnt_mask == 0) {
+                // outlier
+                std::clog << "Point " << i << " is outlier, skipped\n";
+                continue;
+            }
             cv::Scalar color(uchar_dist(), uchar_dist(), uchar_dist());
+            // std::clog << "color = " << color << "\n";
             auto& epiline = epilines.at<cv::Vec3f>(i);
             int x1 = 0;
             int y1 = - epiline(2) / epiline(1);
             int x2 = target_img.cols;
-            int y2 = - (epiline(2) - epiline(0) * x2) / epiline(1);
+            int y2 = - (epiline(2) + epiline(0) * x2) / epiline(1);
             cv::Point p1{x1, y1};
             cv::Point p2{x2, y2};
             cv::line(target_img, p1, p2, color, 1, cv::LINE_AA, 0);
             // draw correspond points in 2 img.
             auto& target_p = pnts_in_target_img.at(i);
-            cv::circle(target_img, target_p, 3, color, 1, cv::LINE_AA, 0);
+            cv::circle(target_img, target_p, 5, color, -1, cv::LINE_AA);
             auto& source_p = pnts_in_source_img.at(i);
-            cv::circle(source_img, source_p, 3, color, 1, cv::LINE_AA, 0);
-            if (i > 7) {break;}
+            cv::circle(source_img, source_p, 5, color, -1, cv::LINE_AA);
         }
     };
     cv::Mat draw_img1 = imgs.at(0).clone();
     cv::Mat draw_img2 = imgs.at(1).clone();
     draw_epilines(epilines_for_pnt1, draw_img2, draw_img1, 
-        match_points.at(1), match_points.at(0));
+        match_points.at(1), match_points.at(0), mask);
     cv::imshow("epilines in img2", draw_img2);
     cv::waitKey(0);
 }
