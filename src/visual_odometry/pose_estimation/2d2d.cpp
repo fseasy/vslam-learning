@@ -239,6 +239,10 @@ void verify_F_and_draw_epilines(
                 std::clog << "Point " << i << " is outlier, skipped\n";
                 continue;
             }
+            // 只画20%的点，太多看不过来
+            if (uchar_dist() / 256.f < 0.8) {
+                continue;
+            }
             cv::Scalar color(uchar_dist(), uchar_dist(), uchar_dist());
             // std::clog << "color = " << color << "\n";
             auto& epiline = epilines.at<cv::Vec3f>(i);
@@ -249,18 +253,27 @@ void verify_F_and_draw_epilines(
             cv::Point p1{x1, y1};
             cv::Point p2{x2, y2};
             cv::line(target_img, p1, p2, color, 1, cv::LINE_AA, 0);
-            // draw correspond points in 2 img.
+            // draw correspond points in 2 img. target use circle, source use cross
             auto& target_p = pnts_in_target_img.at(i);
             cv::circle(target_img, target_p, 5, color, -1, cv::LINE_AA);
             auto& source_p = pnts_in_source_img.at(i);
-            cv::circle(source_img, source_p, 5, color, -1, cv::LINE_AA);
+            cv::drawMarker(source_img, source_p, color, cv::MARKER_CROSS, 20, 
+                2, cv::LINE_AA);
         }
     };
     cv::Mat draw_img1 = imgs.at(0).clone();
     cv::Mat draw_img2 = imgs.at(1).clone();
     draw_epilines(epilines_for_pnt1, draw_img2, draw_img1, 
         match_points.at(1), match_points.at(0), mask);
-    cv::imshow("epilines in img2", draw_img2);
+    cv::Mat cat_img{};
+    cv::hconcat(draw_img1, draw_img2, cat_img);
+    cv::putText(cat_img, 
+        "Left: feature points "
+        "=> Right: coresponding epilines & feature points",
+        cv::Point2i(20, 60), cv::FONT_HERSHEY_SIMPLEX, 1,
+        cv::Scalar::all(255), 2, cv::LINE_AA);
+    cv::imshow("epilines: img1->img2", cat_img);
+    cv::imwrite("epilines.png", cat_img);
     cv::waitKey(0);
 }
 
