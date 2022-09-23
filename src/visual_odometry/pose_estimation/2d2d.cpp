@@ -4,6 +4,8 @@
 #include <opencv2/opencv.hpp>
 #include <src/visual_odometry/orb/orb.h>
 
+#include "pose.h"
+
 std::vector<std::vector<cv::Point2f>> _get_match_points(
     const std::vector<std::vector<cv::KeyPoint>>& kps,
     const std::vector<cv::DMatch>& matches);
@@ -58,7 +60,7 @@ int main(int argc, char* argv[]) {
         cv::waitKey(1);
     }
 
-    auto match_points = _get_match_points(kps, matches);
+    auto match_points = get_match_points(kps, matches);
     cv::Mat camera_intrinsic = (cv::Mat_<double>(3, 3) 
         << 520.9, 0, 325.1, 
            0, 521.0, 249.7, 
@@ -71,22 +73,6 @@ int main(int argc, char* argv[]) {
     verify_epipolar(match_points, camera_intrinsic, R, t, E);
     verify_F_and_draw_epilines(match_points, camera_intrinsic, E, imgs);
     homography(match_points, camera_intrinsic, R, t);
-}
-
-std::vector<std::vector<cv::Point2f>> _get_match_points(
-    const std::vector<std::vector<cv::KeyPoint>>& kps,
-    const std::vector<cv::DMatch>& matches) {
-    std::vector<std::vector<cv::Point2f>> match_points(2);
-    auto sz = matches.size();
-    auto& first_pnts = match_points.at(0);
-    auto& second_pnts = match_points.at(1);
-    first_pnts.reserve(sz);
-    second_pnts.reserve(sz);
-    for (auto& match : matches) {
-        first_pnts.push_back(kps.at(0).at(match.queryIdx).pt);
-        second_pnts.push_back(kps.at(1).at(match.trainIdx).pt);
-    }
-    return match_points;
 }
 
 void epipolar_geometry(

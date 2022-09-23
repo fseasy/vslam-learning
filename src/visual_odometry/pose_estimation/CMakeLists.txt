@@ -17,3 +17,7 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 add_executable(2d2d 2d2d.cpp)
 target_link_libraries(2d2d ${OpenCV_LIBS})
 target_include_directories(2d2d PRIVATE ${WORK_ROOT})
+
+add_executable(triangulate triangulate.cpp)
+target_link_libraries(triangulate ${OpenCV_LIBS})
+target_include_directories(triangulate PRIVATE ${WORK_ROOT})
