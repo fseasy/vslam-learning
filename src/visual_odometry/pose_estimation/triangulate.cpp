@@ -18,6 +18,12 @@ void epipolar_pose_estimate(
     cv::Mat& t,
     std::vector<std::vector<cv::Point2f>>& inlier_match_points);
 
+void triangulate(const std::vector<std::vector<cv::Point2f>>& match_points,
+    const cv::Mat& K,
+    const cv::Mat& R,
+    const cv::Mat& t,
+    std::vector<cv::Point3f>& points3);
+
 int main(int argc, char* argv[]) {
     if (argc != 3) {
         std::cerr << "param error.\n"
@@ -51,7 +57,8 @@ int main(int argc, char* argv[]) {
     cv::Mat t;
     std::vector<std::vector<cv::Point2f>> inlier_match_points;
     epipolar_pose_estimate(match_points, K, R, t, inlier_match_points);
-
+    std::vector<cv::Point3f> space_points{};
+    triangulate(inlier_match_points, K, R, t, space_points);
 }
 
 void epipolar_pose_estimate(
@@ -77,10 +84,49 @@ void epipolar_pose_estimate(
     inlier_match_points.at(1).reserve(inlier_sz);
     for (std::size_t i = 0U; i < match_points.size(); ++i) {
         int is_inlier = inlier_indicator.at<int>(i);
-        if (!is_inlier) {
+        if (is_inlier == 0) {
             continue;
         }
         inlier_match_points.at(0).push_back(match_points.at(0).at(i));
         inlier_match_points.at(1).push_back(match_points.at(1).at(i));
+    }
+}
+
+
+void triangulate(const std::vector<std::vector<cv::Point2f>>& match_points,
+    const cv::Mat& K,
+    const cv::Mat& R,
+    const cv::Mat& t,
+    std::vector<cv::Point3f>& points3) {
+    std::vector<std::vector<cv::Point3f>> camera_points(2);
+
+    auto _pixel2camera = [&K](const cv::Point2f& p) {
+        cv::Mat_<double> K_ = static_cast<cv::Mat_<double>>(K);
+        double fx = K_(0, 0);
+        double fy = K_(1, 1);
+        double cx = K_(0, 2);
+        double cy = K_(1, 2);
+        return cv::Point3f(
+            (p.x - cx) / fx,
+            (p.y - cy) / fy,
+            1.f
+        );
+    };
+
+    auto _pixel2camera_inverse = [&K](const cv::Point2f& p) {
+        cv::Mat K_inv = K.inv();
+        std::clog << "k-inv = " << K_inv << "\n";
+        cv::Mat p3 = (cv::Mat_<double>(3, 1) << p.x, p.y, 1.);
+        cv::Mat p_camera = K_inv * p3;
+        cv::Mat_<double> p_camera_ = static_cast<cv::Mat_<double>>(p_camera);
+        return cv::Point3f(p_camera_(0, 0), p_camera_(1, 0), p_camera_(2, 0));
+    };
+
+    std::clog << _pixel2camera(match_points.at(0).at(0)) << "\n";
+    std::clog << _pixel2camera_inverse(match_points.at(0).at(0)) << "\n";
+
+    std::vector<std::vector<cv::Point3f>> match_points_camera(2);
+    for (std::size_t i = 0U; i < match_points.at(0).size(); ++i) {
+
     }
 }
