@@ -125,8 +125,23 @@ void triangulate(const std::vector<std::vector<cv::Point2f>>& match_points,
     std::clog << _pixel2camera(match_points.at(0).at(0)) << "\n";
     std::clog << _pixel2camera_inverse(match_points.at(0).at(0)) << "\n";
 
-    std::vector<std::vector<cv::Point3f>> match_points_camera(2);
+    std::vector<std::vector<cv::Point2f>> match_points_camera(2);
     for (std::size_t i = 0U; i < match_points.at(0).size(); ++i) {
-
+        auto point1 = _pixel2camera(match_points.at(0).at(i));
+        auto point2 = _pixel2camera(match_points.at(1).at(i));
+        match_points_camera.at(0).push_back(cv::Point2f(point1.x, point1.y));
+        match_points_camera.at(1).push_back(cv::Point2f(point2.x, point2.y));
     }
+
+    cv::Mat T1 = (cv::Mat_<float>(3, 4) << 
+    1, 0, 0, 0,
+    0, 1, 0, 0,
+    0, 0, 0, 1
+    );
+    cv::Mat_<float> R_ = static_cast<cv::Mat_<float>>(R);
+    cv::Mat_<float> t_ = static_cast<cv::Mat_<float>>(t);
+    cv::Mat T2 = (cv::Mat_<float>(3, 4) << 
+        R_(0, 0), R_(0, 1), R_(0, 2), t(0, 0),
+    );
+
 }
