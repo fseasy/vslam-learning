@@ -100,6 +100,8 @@ void triangulate(const std::vector<std::vector<cv::Point2f>>& match_points,
     std::vector<cv::Point3f>& points3) {
     std::vector<std::vector<cv::Point3f>> camera_points(2);
 
+    std::clog << "R, t type: " << R.type() << " " << t.type() << "\n";
+
     auto _pixel2camera = [&K](const cv::Point2f& p) {
         cv::Mat_<double> K_ = static_cast<cv::Mat_<double>>(K);
         double fx = K_(0, 0);
@@ -136,12 +138,33 @@ void triangulate(const std::vector<std::vector<cv::Point2f>>& match_points,
     cv::Mat T1 = (cv::Mat_<float>(3, 4) << 
     1, 0, 0, 0,
     0, 1, 0, 0,
-    0, 0, 0, 1
+    0, 0, 1, 0
     );
     cv::Mat_<float> R_ = static_cast<cv::Mat_<float>>(R);
     cv::Mat_<float> t_ = static_cast<cv::Mat_<float>>(t);
     cv::Mat T2 = (cv::Mat_<float>(3, 4) << 
-        R_(0, 0), R_(0, 1), R_(0, 2), t(0, 0),
+        R_(0, 0), R_(0, 1), R_(0, 2), t_(0, 0),
+        R_(1, 0), R_(1, 1), R_(1, 2), t_(1, 0),
+        R_(2, 0), R_(2, 1), R_(2, 2), t_(2, 0)
     );
 
+    cv::Mat points4f{};
+    cv::triangulatePoints(T1, T2, 
+        match_points_camera.at(0), match_points_camera.at(1),
+        points4f);
+    std::clog << "points4f type = " << points4f.type() << "\n";
+
+    // points4f shape = 4 x N
+    points3.clear();
+    for (int i = 0; i < points4f.cols; ++i) {
+        auto p = points4f.col(i);
+        p /= p.at<float>(3, 0);
+        auto p_ = static_cast<cv::Mat_<float>>(p);
+        points3.emplace_back(p_(0, 0), p_(1, 0), p_(2, 0));
+    }
+
+    std::clog << "triangulate finished: \n";
+    for (auto& p : points3) {
+        std::clog << "points: " << p << "\n";
+    }
 }
