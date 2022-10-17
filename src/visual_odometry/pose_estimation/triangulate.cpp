@@ -140,13 +140,12 @@ void triangulate(const std::vector<std::vector<cv::Point2f>>& match_points,
     0, 1, 0, 0,
     0, 0, 1, 0
     );
-    cv::Mat_<float> R_ = static_cast<cv::Mat_<float>>(R);
-    cv::Mat_<float> t_ = static_cast<cv::Mat_<float>>(t);
-    cv::Mat T2 = (cv::Mat_<float>(3, 4) << 
-        R_(0, 0), R_(0, 1), R_(0, 2), t_(0, 0),
-        R_(1, 0), R_(1, 1), R_(1, 2), t_(1, 0),
-        R_(2, 0), R_(2, 1), R_(2, 2), t_(2, 0)
-    );
+    cv::Mat T2(3, 4, CV_32F);
+    R.copyTo(T2.colRange(0, 3));
+    t.copyTo(T2.colRange(3, 4));
+    std::clog << "R = " << R << "\n";
+    std::clog << "t = " << t << "\n";
+    std::clog << "T2 = " << T2 << "\n";
 
     cv::Mat points4f{};
     cv::triangulatePoints(T1, T2, 
