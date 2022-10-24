@@ -3,6 +3,7 @@
 #include <vector>
 #include <opencv2/opencv.hpp>
 
+inline
 std::vector<std::vector<cv::Point2f>> get_match_points(
     const std::vector<std::vector<cv::KeyPoint>>& kps,
     const std::vector<cv::DMatch>& matches) {
@@ -18,3 +19,15 @@ std::vector<std::vector<cv::Point2f>> get_match_points(
     }
     return match_points;
 }
+
+inline
+cv::Point2f pixel2camera(const cv::Point2f& p, const cv::Mat& K) {
+    double fx = K.at<double>(0, 0);
+    double fy = K.at<double>(1, 1);
+    double cx = K.at<double>(0, 2);
+    double cy = K.at<double>(1, 2);
+    return cv::Point2f(
+        (p.x - cx) / fx,
+        (p.y - cy) / fy
+    );
+};
