@@ -21,13 +21,14 @@ std::vector<std::vector<cv::Point2f>> get_match_points(
 }
 
 inline
-cv::Point2f pixel2camera(const cv::Point2f& p, const cv::Mat& K) {
+cv::Point3f pixel2camera(const cv::Point2f& p, const cv::Mat& K) {
     double fx = K.at<double>(0, 0);
     double fy = K.at<double>(1, 1);
     double cx = K.at<double>(0, 2);
     double cy = K.at<double>(1, 2);
-    return cv::Point2f(
+    return cv::Point3f(
         (p.x - cx) / fx,
-        (p.y - cy) / fy
+        (p.y - cy) / fy,
+        1.f
     );
 };

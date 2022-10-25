@@ -39,6 +39,8 @@ std::vector<cv::Point3f> load_depth_and_make_3d_points(const std::string& depth_
     const std::vector<cv::Point2f>& points2d,
     const cv::Mat& K) {
     auto depth_mat = cv::imread(depth_fpath, cv::IMREAD_UNCHANGED);
+    std::vector<cv::Point3f> points3d{};
+    points3d.reserve(points2d.size());
     for (auto& p : points2d) {
         auto raw_depth = depth_mat.at<ushort>(p.y, p.x);
         if (raw_depth == 0) {
@@ -49,6 +51,9 @@ std::vector<cv::Point3f> load_depth_and_make_3d_points(const std::string& depth_
         float actual_depth = raw_depth / 5000.f;
         // 深度，其实是相机空间下的；
         // 所以，x，y也需要转换到相机空间下！
-        cv::Point2f camera2d = pixel2camera(p, K);
+        cv::Point3f camera3d_norm = pixel2camera(p, K);
+        cv::Point3f camera3d = camera3d_norm * actual_depth;
+        points3d.push_back(std::move(camera3d));
     }
+    return points3d;
 }
