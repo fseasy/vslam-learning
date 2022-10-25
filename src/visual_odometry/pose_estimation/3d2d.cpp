@@ -4,8 +4,16 @@
 
 #include "pose.h"
 
-std::vector<cv::Point3f> load_depth_and_make_3d_points(const std::string& depth_fpath,
-    const std::vector<cv::Point2f>& points2d);
+using p3d2d_t = std::pair<std::vector<cv::Point3f>, std::vector<cv::Point2f>>;
+
+p3d2d_t load_depth_and_make_3d2d_points(const std::string& depth_fpath,
+    const std::vector<cv::Point2f>& points2d,
+    const cv::Mat& K,
+    const std::vector<cv::Point2f>& other_points2d);
+
+void cv_pnp(const std::vector<cv::Point3f>& objects, 
+    const std::vector<cv::Point2f>& img_points,
+    const cv::Mat& K);
 
 int main(int argc, char* argv[]) {
     if (argc != 4) {
@@ -30,14 +38,26 @@ int main(int argc, char* argv[]) {
     }
     std::vector<std::vector<cv::Point2f>> match_points = get_match_points(
         kps, matches);
-    
-    auto img1_3d_points = load_depth_and_make_3d_points(argv[2], 
-        matches, match_points.at(0));
+
+    cv::Mat K = (cv::Mat_<double>(3, 3) <<
+        520.9, 0, 325.1, 
+        0, 521.0, 249.7, 
+        0, 0, 1
+    );
+
+    std::vector<cv::Point3f> objects{};
+    std::vector<cv::Point2f> img_points{};
+    std::tie(objects, img_points) = load_depth_and_make_3d2d_points(argv[2], 
+        match_points.at(0), 
+        K,
+        match_points.at(1));
+    cv_pnp(objects, img_points, K);
 }
 
-std::vector<cv::Point3f> load_depth_and_make_3d_points(const std::string& depth_fpath,
+p3d2d_t load_depth_and_make_3d2d_points(const std::string& depth_fpath,
     const std::vector<cv::Point2f>& points2d,
-    const cv::Mat& K) {
+    const cv::Mat& K,
+    const std::vector<cv::Point2f>& other_points2d) {
     auto depth_mat = cv::imread(depth_fpath, cv::IMREAD_UNCHANGED);
     std::vector<cv::Point3f> points3d{};
     points3d.reserve(points2d.size());
@@ -56,4 +76,16 @@ std::vector<cv::Point3f> load_depth_and_make_3d_points(const std::string& depth_
         points3d.push_back(std::move(camera3d));
     }
     return points3d;
+}
+
+void cv_pnp(const std::vector<cv::Point3f>& objects, 
+    const std::vector<cv::Point2f>& img_points,
+    const cv::Mat& K) {
+    cv::Mat rvec{};
+    cv::Mat tvec{};
+    std::clog << "objects num = " << objects.size() 
+        << ", img points num = " << img_points.size() << "\n";
+    bool is_ok = cv::solvePnP(objects, img_points, K, cv::Mat(), rvec, tvec, false);
+    std::clog << "cv::solvePnP is "<< std::boolalpha << is_ok << std::endl;
+
 }
