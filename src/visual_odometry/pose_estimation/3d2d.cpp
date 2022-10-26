@@ -59,9 +59,12 @@ p3d2d_t load_depth_and_make_3d2d_points(const std::string& depth_fpath,
     const cv::Mat& K,
     const std::vector<cv::Point2f>& other_points2d) {
     auto depth_mat = cv::imread(depth_fpath, cv::IMREAD_UNCHANGED);
-    std::vector<cv::Point3f> points3d{};
-    points3d.reserve(points2d.size());
-    for (auto& p : points2d) {
+    std::vector<cv::Point3f> objects{};
+    std::vector<cv::Point2f> img_points{};
+    objects.reserve(points2d.size());
+    img_points.reserve(points2d.size());
+    for (std::size_t i = 0U; i < points2d.size(); ++i) {
+        auto& p = points2d.at(i);
         auto raw_depth = depth_mat.at<ushort>(p.y, p.x);
         if (raw_depth == 0) {
             // bad
@@ -73,9 +76,10 @@ p3d2d_t load_depth_and_make_3d2d_points(const std::string& depth_fpath,
         // 所以，x，y也需要转换到相机空间下！
         cv::Point3f camera3d_norm = pixel2camera(p, K);
         cv::Point3f camera3d = camera3d_norm * actual_depth;
-        points3d.push_back(std::move(camera3d));
+        objects.push_back(std::move(camera3d));
+        img_points.push_back(other_points2d.at(i));
     }
-    return points3d;
+    return std::make_pair(objects, img_points);
 }
 
 void cv_pnp(const std::vector<cv::Point3f>& objects, 
@@ -87,5 +91,8 @@ void cv_pnp(const std::vector<cv::Point3f>& objects,
         << ", img points num = " << img_points.size() << "\n";
     bool is_ok = cv::solvePnP(objects, img_points, K, cv::Mat(), rvec, tvec, false);
     std::clog << "cv::solvePnP is "<< std::boolalpha << is_ok << std::endl;
-
+    std::clog << "rvec = " << rvec.t() << "; tvec = " << tvec.t() << std::endl;
+    cv::Mat R{};
+    cv::Rodrigues(rvec, R);
+    std::clog << "R = " << R << std::endl;
 }
