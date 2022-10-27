@@ -24,6 +24,9 @@ t肯定不同，但各个值并不是成倍数的（比值为 [7.332135625714912
 
 */
 #include <opencv2/opencv.hpp>
+#include <Eigen/Core>
+#include <sophus/se3.hpp>
+
 #include <src/visual_odometry/orb/orb.h>
 
 #include "pose.h"
@@ -120,3 +123,5 @@ void cv_pnp(const std::vector<cv::Point3f>& objects,
     cv::Rodrigues(rvec, R);
     std::clog << "R = " << R << std::endl;
 }
+
+void ba_gauss_newton()
