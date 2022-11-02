@@ -32,6 +32,8 @@ t肯定不同，但各个值并不是成倍数的（比值为 [7.332135625714912
 #include "pose.h"
 
 using p3d2d_t = std::pair<std::vector<cv::Point3f>, std::vector<cv::Point2f>>;
+using eigen3d_points_t = std::vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>>;
+using eigen2d_points_t = std::vector<Eigen::Vector2d, Eigen::aligned_allocator<Eigen::Vector2d>>;
 
 p3d2d_t load_depth_and_make_3d2d_points(const std::string& depth_fpath,
     const std::vector<cv::Point2f>& points2d,
@@ -124,4 +126,22 @@ void cv_pnp(const std::vector<cv::Point3f>& objects,
     std::clog << "R = " << R << std::endl;
 }
 
-void ba_gauss_newton()
+void ba_gauss_newton(const eigen3d_points_t& objects,
+    const eigen2d_points_t& img_points,
+    const cg::Mat& K) {
+    using Vector6d = Eigen::Matrix<double, 6, 1>;
+    constexpr int max_iterations = 10;
+
+    double fx = K.at<double>(0, 0);
+    double fy = K.at<double>(1, 1);
+    double cx = K.at<double>(0, 2);
+    double cy = K.at<double>(1, 2);
+    Sophus::SE3d pose{};
+
+    double cost{};
+    double last_cost{};
+    for (int i = 0; i < max_iterations; ++i) {
+
+    }
+
+}
