@@ -128,7 +128,7 @@ void cv_pnp(const std::vector<cv::Point3f>& objects,
 
 void ba_gauss_newton(const eigen3d_points_t& objects,
     const eigen2d_points_t& img_points,
-    const cg::Mat& K) {
+    const cv::Mat& K) {
     using Vector6d = Eigen::Matrix<double, 6, 1>;
     constexpr int max_iterations = 10;
 
@@ -136,11 +136,38 @@ void ba_gauss_newton(const eigen3d_points_t& objects,
     double fy = K.at<double>(1, 1);
     double cx = K.at<double>(0, 2);
     double cy = K.at<double>(1, 2);
-    Sophus::SE3d pose{};
+    Sophus::SE3d T{};
 
-    double cost{};
     double last_cost{};
     for (int i = 0; i < max_iterations; ++i) {
+        Eigen::Matrix<double, 6, 6> H = Eigen::Matrix<double, 6, 6>::Zero();
+        Vector6d g = Vector6d::Zero();
+        double cost{};
+        for (auto i = 0U; i < img_points.size(); ++i) {
+            auto& object = objects.at(i);
+            auto& img_point = img_points.at(i);
+            Eigen::Vector3d camera_object = T * object;
+            double z = camera_object[2];
+            Eigen::Vector3d norm_camera_object = camera_object / z;
+            Eigen::Vector2d proj_point(fx * norm_camera_object[0] + cx,
+                fy * norm_camera_object[1] + cy);
+            Eigen::Vector2d e = img_point - proj_point;
+            cost += e.squaredNorm();
+
+            auto inv_z = 1. / z;
+            auto inv_z2 = inv_z * inv_z;
+            Eigen::Matrix<double, 2, 6> J{};
+            J << 
+                // row 1
+                -fx * inv_z, 0,
+                fx * camera_object[0] * inv_z2, fx * camera_object[0] * camera_object[1] * inv_z2,
+                -fx - fx * camera_object[0] * camera_bject[0] * inv_z2, fx * canera_object[1] * inv_z,
+                // row 2
+                0, -fy * inv_z,
+                fy * camera_object[1] * inv_z2, fy + fy * camera_object[1] * camera_object[1] * inv_z2,
+                -fy * camera_object[0] * camera_object[1] * inv_z2, -fy * camera_object[0] * inv_z;
+
+        }
 
     }
 
