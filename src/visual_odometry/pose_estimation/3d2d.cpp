@@ -23,6 +23,8 @@ t = [-0.9295837998982542, -0.1479623532712804, 0.3376108721311374]
 t肯定不同，但各个值并不是成倍数的（比值为 [7.332135625714912, 17.5321693399427, 5.594275661166211]），这个有点不太懂。正常应该是成倍数的？
 
 */
+#include <cmath>
+
 #include <opencv2/opencv.hpp>
 #include <Eigen/Core>
 #include <sophus/se3.hpp>
@@ -42,6 +44,10 @@ p3d2d_t load_depth_and_make_3d2d_points(const std::string& depth_fpath,
 
 void cv_pnp(const std::vector<cv::Point3f>& objects, 
     const std::vector<cv::Point2f>& img_points,
+    const cv::Mat& K);
+
+void ba_gauss_newton(const eigen3d_points_t& objects,
+    const eigen2d_points_t& img_points,
     const cv::Mat& K);
 
 int main(int argc, char* argv[]) {
@@ -81,6 +87,17 @@ int main(int argc, char* argv[]) {
         K,
         match_points.at(1));
     cv_pnp(objects, img_points, K);
+    eigen3d_points_t eigen_objects{};
+    eigen_objects.reserve(objects.size());
+    eigen2d_points_t eigen_img_points{};
+    eigen_img_points.reserve(img_points.size());
+    for (std::size_t i = 0U; i < objects.size(); ++i) {
+        auto& o = objects.at(i);
+        eigen_objects.emplace_back(o.x, o.y, o.z);
+        auto& p = img_points.at(i);
+        eigen_img_points.emplace_back(p.x, p.y);
+    }
+    ba_gauss_newton(eigen_objects, eigen_img_points, K);
 }
 
 p3d2d_t load_depth_and_make_3d2d_points(const std::string& depth_fpath,
@@ -130,7 +147,7 @@ void ba_gauss_newton(const eigen3d_points_t& objects,
     const eigen2d_points_t& img_points,
     const cv::Mat& K) {
     using Vector6d = Eigen::Matrix<double, 6, 1>;
-    constexpr int max_iterations = 10;
+    constexpr std::size_t max_iterations = 10U;
 
     double fx = K.at<double>(0, 0);
     double fy = K.at<double>(1, 1);
@@ -139,7 +156,7 @@ void ba_gauss_newton(const eigen3d_points_t& objects,
     Sophus::SE3d T{};
 
     double last_cost{};
-    for (int i = 0; i < max_iterations; ++i) {
+    for (std::size_t iter = 0U; iter < max_iterations; ++iter) {
         Eigen::Matrix<double, 6, 6> H = Eigen::Matrix<double, 6, 6>::Zero();
         Vector6d g = Vector6d::Zero();
         double cost{};
@@ -151,6 +168,7 @@ void ba_gauss_newton(const eigen3d_points_t& objects,
             Eigen::Vector3d norm_camera_object = camera_object / z;
             Eigen::Vector2d proj_point(fx * norm_camera_object[0] + cx,
                 fy * norm_camera_object[1] + cy);
+            // shape = [2, 1]
             Eigen::Vector2d e = img_point - proj_point;
             cost += e.squaredNorm();
 
@@ -161,14 +179,34 @@ void ba_gauss_newton(const eigen3d_points_t& objects,
                 // row 1
                 -fx * inv_z, 0,
                 fx * camera_object[0] * inv_z2, fx * camera_object[0] * camera_object[1] * inv_z2,
-                -fx - fx * camera_object[0] * camera_bject[0] * inv_z2, fx * canera_object[1] * inv_z,
+                -fx - fx * camera_object[0] * camera_object[0] * inv_z2, fx * camera_object[1] * inv_z,
                 // row 2
                 0, -fy * inv_z,
                 fy * camera_object[1] * inv_z2, fy + fy * camera_object[1] * camera_object[1] * inv_z2,
                 -fy * camera_object[0] * camera_object[1] * inv_z2, -fy * camera_object[0] * inv_z;
-
+            // matrix multiply. [6, 2] x [2, 6] => [6, 6]
+            H += J.transpose() * J;
+            // matrix multiply. [6, 2] x [2, 1] => [6, 1]
+            g += -J.transpose() * e;
         }
-
+        std::clog << "iter " << iter << " cost = " << cost << "\n";
+        if (iter > 0U && cost >= last_cost) {
+            std::clog << "bigger/euqal than last cost(" << last_cost << "). break iteration.\n";
+            break;
+        } 
+        Vector6d dx = H.ldlt().solve(g);
+        if (std::isnan(dx[0])) {
+            std::cerr << "dx is nan\n";
+            break;
+        }
+        // update
+        // exp(dx) => a matrix of [4, 4]. x T = [4, 4] => [4, 4]
+        T = Sophus::SE3d::exp(dx) * T;
+        last_cost = cost;
+        if (dx.norm() < 1e-6) {
+            std::clog << "dx is too small. converged.\n";
+            break;
+        }
     }
-
+    std::clog << "BA by Guass-Newton, T = " << T.matrix() << "\n";
 }
