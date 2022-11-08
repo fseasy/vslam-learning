@@ -208,5 +208,9 @@ void ba_gauss_newton(const eigen3d_points_t& objects,
             break;
         }
     }
-    std::clog << "BA by Guass-Newton, T = " << T.matrix() << "\n";
+    Eigen::Matrix<double, 4, 4> T_mat = T.matrix();
+    std::clog << "BA by Guass-Newton, T = " << T_mat << "\n"
+        << "R = " << T_mat.topLeftCorner<3, 3>() << "\n"
+        << "t = " << T_mat.topRightCorner<3, 1>().transpose() << "\n";
+
 }
