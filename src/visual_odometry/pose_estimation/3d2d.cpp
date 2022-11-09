@@ -1,6 +1,6 @@
 // Perspective-n-Points
 /*
-
+---> 对比 PnP 和 epipolar 的结果：
 ============ cv::SolvePnP result ==============
 rvec = [-0.02712017276505522, 0.04060407996706972, 0.05041040454892387]; 
 
@@ -22,6 +22,18 @@ t = [-0.9295837998982542, -0.1479623532712804, 0.3376108721311374]
 对比： R 的确差不多，但在小数点第二位就有一定的差别了。
 t肯定不同，但各个值并不是成倍数的（比值为 [7.332135625714912, 17.5321693399427, 5.594275661166211]），这个有点不太懂。正常应该是成倍数的？
 
+---> 对比 cv::SolvePnP 和 Bundle Adjustment Guass Newton 结果
+
+=========== cv::SolvePnp ============
+R,t 见上面的值
+=========== ba gn =============
+R= 0.997906 -0.0509194  0.0398875
+   0.0498187   0.998362  0.0281209
+   -0.041254 -0.0260749   0.998808
+t =  -0.126782 -0.00843948   0.0603493
+只迭代了 4 次， dx.norm() 就 < 1e-6 了 (收敛退出)
+=============
+可以看到cv的结果和ba的结果非常接近！
 */
 #include <cmath>
 
@@ -125,7 +137,7 @@ p3d2d_t load_depth_and_make_3d2d_points(const std::string& depth_fpath,
         objects.push_back(std::move(camera3d));
         img_points.push_back(other_points2d.at(i));
     }
-    return std::make_pair(objects, img_points);
+    return std::make_pair(std::move(objects), std::move(img_points));
 }
 
 void cv_pnp(const std::vector<cv::Point3f>& objects, 
