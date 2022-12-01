@@ -25,8 +25,11 @@
 
 
 int main(int argc, char* argv[]) {
-
-
+    if (argc < 2) {
+        std::cerr << "Usage: " << argv[0] << " dataset-dir\n"
+            "currently use remode-test-data as slambook2\n";
+        return 1;
+    }
 
     return 0;
 }

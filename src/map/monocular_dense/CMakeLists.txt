@@ -9,7 +9,7 @@ else()
     add_compile_options(-Wall -Wextra -pedantic -ansi)
 endif()
 
-set(WORK_ROOT "../../")
+set(WORK_ROOT "../../..")
 
 find_package(OpenCV 4 REQUIRED)
 find_package(Eigen3 REQUIRED)
@@ -19,7 +19,7 @@ message(STATUS "eigen3 include dir =" ${Eigen3_INCLUDE_DIRS})
 message(STATUS "Sophus include dir =" ${Sophus_INCLUDE_DIRS})
 message(STATUS "OpenCV include dir =" ${OpenCV_INCLUDE_DIRS})
 
-add_executable(monocolar_dense monocular_dense.cpp)
+add_executable(monocolar_dense main.cpp)
 target_link_libraries(monocolar_dense 
     ${OpenCV_LIBS} 
     Eigen3::Eigen 
