@@ -3,6 +3,9 @@
 #include <opencv2/opencv.hpp>
 #include <Eigen/Core>
 #include <sophus/se3.hpp>
+
+#include "dataset.hpp"
+
 /*
  单目的地图构建
 
@@ -30,6 +33,12 @@ int main(int argc, char* argv[]) {
             "currently use remode-test-data as slambook2\n";
         return 1;
     }
+    const std::string dataset_dir = argv[1];
+    dataset::Dataset remode_dataset(dataset_dir);
+    std::clog << "Load remode dataset, size = " << remode_dataset.size() << "\n";
+
+    
+
 
     return 0;
 }
