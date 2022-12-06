@@ -5,6 +5,7 @@
 #include <limits>
 #include <fstream>
 #include <optional>
+#include <format>
 
 #include <sophus/se3.hpp>
 #include <Eigen/Core>
@@ -63,23 +64,32 @@ Dataset::Dataset(const std::string& data_dir, std::size_t process_num)
 inline 
 std::optional<cv::Mat> Dataset::get_img(std::size_t index) const {
     if (index >= size()) {
-        return false;
+        return {};
     }  
     auto& fpath = img_fpaths_.at(index);
-    img = cv::imread(fpath, cv::IMREAD_GRAYSCALE);
-    return true;
+    std::optional<cv::Mat> img = cv::imread(fpath, cv::IMREAD_GRAYSCALE);
+    return img;
 }
 
 inline
-std::optional<Sophus::SE3d> Dataset::get_pose(std::size_t index) {
+std::optional<Sophus::SE3d> Dataset::get_pose(std::size_t index) const {
     if (index >= size()) {
-        return false;
+        return {};
     }
-    twc = poses_.at(index);
-    return true;
+    std::optional<Sophus::SE3d> twc = poses_.at(index);
+    return twc;
 }
 
-
+inline
+std::optional<cv::Mat> Dataset::get_ref_depth(std::size_t index) const {
+    if (index >= size()) {
+        return {};
+    }
+    const std::string depth_fpath = std::format(
+        "{}/depthmaps/scene_{:03d}.depth",
+        data_dir_, index);
+    
+}
 
 } // end of dataset
 
