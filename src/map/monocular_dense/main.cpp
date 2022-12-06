@@ -37,7 +37,14 @@ int main(int argc, char* argv[]) {
     dataset::Dataset remode_dataset(dataset_dir);
     std::clog << "Load remode dataset, size = " << remode_dataset.size() << "\n";
 
-    
+    auto ref_img = remode_dataset.get_img(0U);
+    auto ref_twc = remode_dataset.get_pose(0U);
+    cv::Mat 
+
+    for (std::size_t i = 1U; i < remode_dataset.size(); ++i) {
+        auto cur_img = remode_dataset.get_img(i);
+
+    }
 
 
     return 0;

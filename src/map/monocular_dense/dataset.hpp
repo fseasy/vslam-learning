@@ -5,10 +5,10 @@
 #include <limits>
 #include <fstream>
 #include <optional>
-#include <format>
 
 #include <sophus/se3.hpp>
 #include <Eigen/Core>
+#include <fmt/core.h>
 
 namespace dataset {
 
@@ -17,7 +17,7 @@ public:
     explicit Dataset(const std::string& data_dir, 
         std::size_t process_num=std::numeric_limits<std::size_t>::max());
 
-    std::size_t size() const noexcept { return img_files.size(); }
+    std::size_t size() const noexcept { return img_fpaths_.size(); }
     
     std::optional<cv::Mat> get_img(std::size_t index) const;
     std::optional<Sophus::SE3d> get_pose(std::size_t index) const;
@@ -85,10 +85,13 @@ std::optional<cv::Mat> Dataset::get_ref_depth(std::size_t index) const {
     if (index >= size()) {
         return {};
     }
-    const std::string depth_fpath = std::format(
+    const std::string depth_fpath = fmt::format(
         "{}/depthmaps/scene_{:03d}.depth",
         data_dir_, index);
-    
+    auto depth = cv::imread(depth_fpath, cv::IMREAD_UNCHANGED);
+    std::clog << "readed depth type = " << depth.type() << "\n";
+    depth /= 100.;
+    return depth;
 }
 
 } // end of dataset

@@ -14,6 +14,7 @@ set(WORK_ROOT "../../..")
 find_package(OpenCV 4 REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(Sophus REQUIRED)
+find_package(fmt REQUIRED)
 
 message(STATUS "eigen3 include dir =" ${Eigen3_INCLUDE_DIRS})
 message(STATUS "Sophus include dir =" ${Sophus_INCLUDE_DIRS})
@@ -23,5 +24,6 @@ add_executable(monocolar_dense main.cpp)
 target_link_libraries(monocolar_dense 
     ${OpenCV_LIBS} 
     Eigen3::Eigen 
-    Sophus::Sophus)
+    Sophus::Sophus
+    fmt::fmt)
 target_include_directories(monocolar_dense PRIVATE ${OpenCV_INCLUDE_DIRS})
