@@ -5,6 +5,8 @@
 #include <sophus/se3.hpp>
 
 #include "dataset.hpp"
+#include "depth_filter.hpp"
+#include "conf.h"
 
 /*
  单目的地图构建
@@ -38,12 +40,22 @@ int main(int argc, char* argv[]) {
     std::clog << "Load remode dataset, size = " << remode_dataset.size() << "\n";
 
     auto ref_img = remode_dataset.get_img(0U);
-    auto ref_twc = remode_dataset.get_pose(0U);
-    cv::Mat 
+    auto ref_Twc = remode_dataset.get_pose(0U);
+    mdf::NaiveDepthFilter depth_filter(
+        conf::HEIGHT, conf::WIDTH, conf::INIT_DEPTH, conf::INIT_COV);
 
     for (std::size_t i = 1U; i < remode_dataset.size(); ++i) {
+        std::clog << "using img " << i << "\n";
         auto cur_img = remode_dataset.get_img(i);
-
+        auto cur_Twc = remode_dataset.get_pose(i);
+        if (!cur_img || !cur_Twc) {
+            std::clog << "Got invalid img/Twc for index " << i << "\n";
+            continue;
+        }
+        // T_current_reference = T_current_word *  T_world_reference
+        Sophus::SE3d T_cur_ref = cur_Twc->inverse() * (*ref_Twc);
+        depth_filter.update(ref_img, cur_img, T_cur_ref);
+        
     }
 
 
