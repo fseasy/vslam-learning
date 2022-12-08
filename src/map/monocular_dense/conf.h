@@ -15,4 +15,6 @@ constexpr double MAX_COV = 10.;
 
 constexpr int IMG_BORDER = 20;
 
+constexpr int NCC_WINDOW_SIZE = 3;
+
 } // end of conf
