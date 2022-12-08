@@ -3,6 +3,8 @@
 #include <opencv2/opencv.hpp>
 #include <sophus/se2.hpp>
 
+#include "utils.hpp"
+
 namespace mdf {
 
 class NaiveDepthFilter {
@@ -13,8 +15,11 @@ public:
         const Sophus::SE3d& T_new_ref);
 
 private:
-    void epipolar_search(const cv::Mat& ref_img, const cv::Mat& new_img,
+    void epipolar_search(
+        const cv::Mat& ref_img, 
+        const cv::Mat& new_img,
         const Eigen::Vector2d& point_ref, 
+        const Sophus::SE3d& T_new_ref,
         Eigen::Vector2d& point_new, Eigen::Vector2d& epipolar_direction);
 
 private:
@@ -49,15 +54,29 @@ void NaiveDepthFilter::update(const cv::Mat& ref_img, const cv::Mat& new_img,
     }
 }
 
-void NaiveDepthFilter::epipolar_search(const cv::Mat& ref_img, const cv::Mat& new_img,
+void NaiveDepthFilter::epipolar_search(
+    const cv::Mat& ref_img, 
+    const cv::Mat& new_img,
     const Eigen::Vector2d& point_ref, 
+    const Sophus::SE3d& T_new_ref,
     Eigen::Vector2d& point_new, Eigen::Vector2d& epipolar_direction) {
+    Eigen::Vector3d camera_ref = utils::pixel2camera(point_ref);
+    camera_ref.normalize();
+    // set search range
     int y = static_cast<int>(point_ref(1));
     int x = static_cast<int>(point_ref(0));
-    double pnt_depth = depth_.at<double>(y, x);
+    double pnt_depth_mean = depth_.at<double>(y, x);
     double pnt_cov = cov_.at<double>(y, x);
     double pnt_std_dev = std::sqrt(pnt_cov);
+    double range_half_width = 3 * pnt_std_dev;
+    double pnt_depth_min = pnt_depth_mean - range_half_width;
+    pnt_depth_mean = std::max(pnt_depth_mean, 0.1);
+    double pnt_depth_max = pnt_depth_mean + range_half_width;
+
+    Eigen::Vector2d pnt_new_mean = utils::camera2pixcel(
+        T_new_ref * (camera_ref * pnt_depth_mean));
     
+
 }
 
 } // end of namespace mdf
