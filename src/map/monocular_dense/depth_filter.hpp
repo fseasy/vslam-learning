@@ -112,9 +112,26 @@ double NaiveDepthFilter::calc_ncc(
         const Eigen::Vector2d& point_ref,
         const Eigen::Vector2d& point_new) {
     // 零均值-归一化互相关 (normalized cross correlation)
-    constexpr int NCC_AREA = std::pow(conf::NCC_WINDOW_SIZE * 2 + 1, 2);
+    using conf::NCC_WINDOW_SIZE;
+    constexpr int NCC_AREA = std::pow(NCC_WINDOW_SIZE * 2 + 1, 2);
     
     auto _for_loop_impl = [&]() -> double {
+        
+        std::vector<double> ref_values{}; ref_values.reserve(NCC_AREA);
+        std::vector<double> new_values{}; new_values.reserve(NCC_AREA);
+        for (int dy = - NCC_WINDOW_SIZE; dy <= NCC_WINDOW_SIZE; ++dy) {
+            for (int dx = - NCC_WINDOW_SIZE; dx <= NCC_WINDOW_SIZE; ++dx) {
+                int ref_x = point_ref(0) + dx;
+                int ref_y = point_ref(1) + dy;
+                // max value = 255, use it to normalize.
+                double ref_value = ref_img.at<uchar>(ref_y, ref_x) / 255.;
+                ref_values.push_back(ref_value);
+                double new_value = utils::calc_bilinear_interpolated<uchar>(
+                    new_img, 
+                    point_new + Eigen::Vector2d(dx, dy)) / 255.;
+                new_values.push_back(new_value);
+            }
+        }
         
     };
 }
