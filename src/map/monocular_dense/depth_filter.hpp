@@ -1,4 +1,5 @@
 #include <cmath>
+#include <numeric>
 
 #include <opencv2/opencv.hpp>
 #include <sophus/se2.hpp>
@@ -20,7 +21,9 @@ private:
         const cv::Mat& new_img,
         const Eigen::Vector2d& point_ref, 
         const Sophus::SE3d& T_new_ref,
-        Eigen::Vector2d& point_new, Eigen::Vector2d& epipolar_direction);
+        Eigen::Vector2d& point_new, 
+        Eigen::Vector2d& epipolar_direction,
+        double& match_ncc);
     double calc_ncc(
         const cv::Mat& ref_img,
         const cv::Mat& new_img,
@@ -55,6 +58,14 @@ void NaiveDepthFilter::update(const cv::Mat& ref_img, const cv::Mat& new_img,
             // 极线搜索
             Eigen::Vector2d pnt_new{};
             Eigen::Vector2d epipolar_direction{};
+            double ncc = 0.;
+            epipolar_search(ref_img, new_img, Eigen::Vector2d(x, y), T_new_ref,
+                pnt_new, epipolar_direction, ncc);
+            if (ncc < 0.85) {
+                std::clog << "ncc is small, not valid match\n";
+                continue;
+            }
+            
         }
 
     }
@@ -65,7 +76,9 @@ void NaiveDepthFilter::epipolar_search(
     const cv::Mat& new_img,
     const Eigen::Vector2d& point_ref, 
     const Sophus::SE3d& T_new_ref,
-    Eigen::Vector2d& point_new, Eigen::Vector2d& epipolar_direction) {
+    Eigen::Vector2d& point_new, 
+    Eigen::Vector2d& epipolar_direction,
+    double& match_ncc) {
     Eigen::Vector3d camera_ref = utils::pixel2camera(point_ref);
     camera_ref.normalize();
     // set search range
@@ -102,7 +115,13 @@ void NaiveDepthFilter::epipolar_search(
             continue;
         }
         double ncc = calc_ncc(ref_img, new_img, point_ref, pnt_new_search);
+        if (ncc > best_ncc) {
+            best_ncc = ncc;
+            pnt_new_best_match = pnt_new_search;
+        }
     }
+    point_new = pnt_new_best_match;
+    match_ncc = best_ncc;
 }
 
 inline
@@ -131,9 +150,27 @@ double NaiveDepthFilter::calc_ncc(
                     point_new + Eigen::Vector2d(dx, dy)) / 255.;
                 new_values.push_back(new_value);
             }
+        }  
+        double value_size = static_cast<double>(ref_values.size());
+        double ref_mean = std::reduce(std::execution::par, 
+            ref_values.begin(), ref_values.end()) / value_size;
+        double new_mean = std::reduce(std::execution::par,
+            new_values.begin(), new_values.end()) / value_size;
+        double numerator = 0.;
+        double denominator1 = 0., demoninator2 = 0.;
+        for (std::size_t i = 0U; i < ref_values.size(); ++i) {
+            auto ref1 = ref_values.at(i) - ref_mean;
+            auto new1 = new_values.at(i) - new_mean;
+            numerator += ref1 * new1;
+            denominator1 += ref1 * ref1;
+            denominator2 += new1 * new1;
         }
-        
+        auto ncc_val = numerator 
+            / (std::sqrt(denominator1 * denominator2) + 1e-10);
+        return ncc_val;
     };
+
+    return _for_loop_impl();
 }
 
 } // end of namespace mdf
