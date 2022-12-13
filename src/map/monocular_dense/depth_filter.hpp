@@ -30,7 +30,12 @@ private:
         const Eigen::Vector2d& point_ref,
         const Eigen::Vector2d& point_new
     );
-
+    void update_depth(
+        const Eigen::Vector2d& point_ref,
+        const Eigen::Vector2d& point_new,
+        const Sophus::SE3d& T_new_ref,
+        const Eigen::Vector2d& epipolar_direction
+    );
 private:
     cv::Mat depth_;
     cv::Mat cov_;
@@ -172,5 +177,22 @@ double NaiveDepthFilter::calc_ncc(
 
     return _for_loop_impl();
 }
+
+void NaiveDepthFilter::update_depth(
+    const Eigen::Vector2d& point_ref,
+    const Eigen::Vector2d& point_new,
+    const Sophus::SE3d& T_new_ref,
+    const Eigen::Vector2d& epipolar_direction
+) {
+    Eigen::Vector3d f_ref = utils::pixel2camera(point_ref);
+    f_ref.normalize();
+    Eigen::Vector3d f_new = utils::pixel2camera(point_new);
+    f_new.normalize();
+
+    Sophus::SE3d T_ref_new = T_new_ref.inverse();
+    
+
+}
+
 
 } // end of namespace mdf
