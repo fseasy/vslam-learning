@@ -189,6 +189,18 @@ void NaiveDepthFilter::update_depth(
     Eigen::Vector3d f_new = utils::pixel2camera(point_new);
     f_new.normalize();
 
+    /**
+     * formular:
+     *  d_ref * f_ref =  R_ref_new * (d_new * f_new) + t_ref_new
+     *  d_ref, f_ref 都是常量，乘法中可以随意移动位置； 移项到左边 
+     *  =>
+     *  f_ref * d_ref - (R_ref_new * f_new) * d_new = t_ref_new
+     *  令 
+     * =>
+     * [ f_ref; R_ref_new * ]
+     * 
+     */
+
     Sophus::SE3d T_ref_new = T_new_ref.inverse();
     
 
