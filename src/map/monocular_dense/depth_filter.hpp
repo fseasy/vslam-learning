@@ -195,15 +195,32 @@ void NaiveDepthFilter::update_depth(
      *  d_ref, f_ref 都是常量，乘法中可以随意移动位置； 移项到左边 
      *  =>
      *  f_ref * d_ref - (R_ref_new * f_new) * d_new = t_ref_new
-     *  令 
+     *  令 f_newT = R_ref_new * f_new， 可写成矩阵形式的乘法
      * =>
-     * [ f_ref; R_ref_new * ]
-     * 
+     * [ f_ref; f_newT ] * [ d_ref]  = [t_ref_new]
+     *                     [- d_new] 
+     *  == 3x2           * 2x1        = 3x1
+     *  两边左乘一个 [f_ref; f_newT]^T , 得到的结果，其实就是高博的那个公式了。
+     *  然后再求逆，乘上b.
+     *  也就是： Ax = b, A 不是方阵，于是 1. A^TAx = A^Tb 2. x = (A^TA)^{-1}A^Tb
+     *      而 (A^TA)^{-1}A 其实就是 左广义逆矩阵 的一种结果，此解法算是广义逆的应用：
+     *      对 Ax = b, 其所有解为 x = A^{g}b - [I - A^{g}A]w
+     *      其中 A^{g} 就是A的任一的广义逆矩阵。
+     *      参见： https://zh.wikipedia.org/zh-cn/%E5%B9%BF%E4%B9%89%E9%80%86%E9%98%B5
      */
 
     Sophus::SE3d T_ref_new = T_new_ref.inverse();
+    Eigen::Vector3d f_newT = T_ref_new.so3() * f_newT;
+    Eigen::Matrixd<3, 2> A{};
+    A.col(0) << f_ref;
+    A.col(1) << f_newT;
+    Eigen::Vector3d b = T_ref_new.translation();
+    Eigen::Vector2d x = (A.tanspose() * A).inverse() * A.transpose() * b;
+    double d_ref = x(0);
+    double d_new = - x(1);
+    Eigen::Vector3d P_ref = f_ref * d_ref;
+    Eigen::Vector3d P_new_in_ref_coor = f_newT * d_new + b;
     
-
 }
 
 
