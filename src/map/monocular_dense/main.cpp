@@ -55,9 +55,7 @@ int main(int argc, char* argv[]) {
         // T_current_reference = T_current_word *  T_world_reference
         Sophus::SE3d T_cur_ref = cur_Twc->inverse() * (*ref_Twc);
         depth_filter.update(ref_img, cur_img, T_cur_ref);
-        
     }
-
 
     return 0;
 }

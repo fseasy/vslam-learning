@@ -1,3 +1,4 @@
+// https://www.guyuehome.com/39825
 #include <cmath>
 #include <numeric>
 
@@ -64,15 +65,15 @@ void NaiveDepthFilter::update(const cv::Mat& ref_img, const cv::Mat& new_img,
             Eigen::Vector2d pnt_new{};
             Eigen::Vector2d epipolar_direction{};
             double ncc = 0.;
-            epipolar_search(ref_img, new_img, Eigen::Vector2d(x, y), T_new_ref,
+            Eigen::Vector2d pnt_ref(x, y);
+            epipolar_search(ref_img, new_img, pnt_ref, T_new_ref,
                 pnt_new, epipolar_direction, ncc);
             if (ncc < 0.85) {
                 std::clog << "ncc is small, not valid match\n";
                 continue;
             }
-            
+            update_depth(pnt_ref, pnt_new, T_new_ref, epipolar_direction);
         }
-
     }
 }
 
@@ -184,6 +185,11 @@ void NaiveDepthFilter::update_depth(
     const Sophus::SE3d& T_new_ref,
     const Eigen::Vector2d& epipolar_direction
 ) {
+    /**
+     这里一个巨大的问题：
+     depth 究竟是啥？ 看代码，这个depth 算出来是向量的 norm 啊（长度）？ 正常来说，depth 不该是 z 吗？？ 
+     搞不懂啊。
+     */
     Eigen::Vector3d f_ref = utils::pixel2camera(point_ref);
     f_ref.normalize();
     Eigen::Vector3d f_new = utils::pixel2camera(point_new);
@@ -220,7 +226,36 @@ void NaiveDepthFilter::update_depth(
     double d_new = - x(1);
     Eigen::Vector3d P_ref = f_ref * d_ref;
     Eigen::Vector3d P_new_in_ref_coor = f_newT * d_new + b;
-    
+    Eigen::Vector3d P_mean = (P_ref + P_new_in_ref_coor) / 2.;
+    double depth_estimate = P_mean.norm();
+
+    /*
+    下面的代码我还没有想通——
+    1. 为啥又用 f_ref 乘上 depth_estimate 了？ 不用 P_mean 了？
+    2. 来自 new 的向量，不旋转过来就可以直接在对极几何中用吗？ 难道它们已经都在一个坐标系下了？ 
+    不太懂，后面看论文啥的再学习吧，耗在这里解决不了的。
+    */
+    auto t = b;
+    Eigen::Vector3d p = f_ref * depth_estimate;
+    double t_norm = t.norm();
+    double alpha = std::acos(f_ref.dot(t) / t_norm);
+    Eigen::Vector3d p_new_prime = utils::pixel2camera(point_new + epipolar_direction);
+    p_new_norm.normalize();
+    double beta_prime = std::acos(p_new_norm.dot(-t) / t_norm)
+    constexpr double PI = std::acos(-1.);
+    double gama = PI - alpha - beta_norm;
+    double p_prime_norm = t_norm / std::sin(game) * std::sin(beta_prime);
+    double diff = p_prime_norm - depth_estimate; // depth_estimate = p.norm()
+    double cov_estimate = diff * diff;
+
+    // 高斯融合
+    double depth_old = depth_.at<double>(point_ref(1), point_ref(0));
+    double cov_old =  cov_.at<double>(point_ref(1), point_ref(0));
+    auto depth_fuse = (depth_old * cov_estimate + depth_estimate * cov_old) 
+        / (cov_estimate + cov_old);
+    double cov_fuse = (cov_estimate * cov_old) / (cov_old + cov_estimate);
+    depth_.at<double>(point_ref(1), point_ref(0)) = depth_fuse;
+    cov_.at<double>(point_ref(1), point_ref(0)) = cov_fuse;
 }
 
 
