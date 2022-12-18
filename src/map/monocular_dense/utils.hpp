@@ -1,3 +1,5 @@
+#pragma once
+
 #include <cmath>
 
 #include <Eigen/Core>
@@ -10,7 +12,7 @@ Eigen::Vector3d pixel2camera(const Eigen::Vector2d& p);
 Eigen::Vector2d camera2pixel(const Eigen::Vector3d& c);
 
 bool is_inside_img(const Eigen::Vector2d& p);
-template <T>
+template <typename T>
 double calc_bilinear_interpolated(const cv::Mat& img, const Eigen::Vector2d& p);
 
 // inline impl
@@ -43,7 +45,7 @@ bool is_inside_img(const Eigen::Vector2d& p) {
         && (x >= col_lowerbound) && (x < col_upperbound);
 }
 
-template <T> 
+template <typename T> 
 inline
 double calc_bilinear_interpolated(const cv::Mat& img, const Eigen::Vector2d& p) {
     double x = p(0), y = p(1);

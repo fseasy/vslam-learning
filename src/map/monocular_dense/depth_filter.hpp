@@ -1,6 +1,7 @@
 // https://www.guyuehome.com/39825
 #include <cmath>
 #include <numeric>
+#include <execution>
 
 #include <opencv2/opencv.hpp>
 #include <sophus/se2.hpp>
@@ -104,7 +105,7 @@ void NaiveDepthFilter::epipolar_search(
     Eigen::Vector2d pnt_new_min = utils::camera2pixel(
         T_new_ref * (camera_ref * pnt_depth_min));
     Eigen::Vector2d pnt_new_max = utils::camera2pixel(
-        T_new_ref * (cemera_ref * pnt_depth_max));
+        T_new_ref * (camera_ref * pnt_depth_max));
     
     Eigen::Vector2d epipolar_line = pnt_new_max - pnt_new_min;
     double epipolar_half_len = epipolar_line.norm() * 0.5;
@@ -138,7 +139,7 @@ double NaiveDepthFilter::calc_ncc(
         const Eigen::Vector2d& point_new) {
     // 零均值-归一化互相关 (normalized cross correlation)
     using conf::NCC_WINDOW_SIZE;
-    constexpr int NCC_AREA = std::pow(NCC_WINDOW_SIZE * 2 + 1, 2);
+    static const int NCC_AREA = std::pow(NCC_WINDOW_SIZE * 2 + 1, 2);
     
     auto _for_loop_impl = [&]() -> double {
         
@@ -163,7 +164,7 @@ double NaiveDepthFilter::calc_ncc(
         double new_mean = std::reduce(std::execution::par,
             new_values.begin(), new_values.end()) / value_size;
         double numerator = 0.;
-        double denominator1 = 0., demoninator2 = 0.;
+        double denominator1 = 0., denominator2 = 0.;
         for (std::size_t i = 0U; i < ref_values.size(); ++i) {
             auto ref1 = ref_values.at(i) - ref_mean;
             auto new1 = new_values.at(i) - new_mean;
@@ -217,11 +218,11 @@ void NaiveDepthFilter::update_depth(
 
     Sophus::SE3d T_ref_new = T_new_ref.inverse();
     Eigen::Vector3d f_newT = T_ref_new.so3() * f_newT;
-    Eigen::Matrixd<3, 2> A{};
+    Eigen::Matrix<double, 3, 2> A{};
     A.col(0) << f_ref;
     A.col(1) << f_newT;
     Eigen::Vector3d b = T_ref_new.translation();
-    Eigen::Vector2d x = (A.tanspose() * A).inverse() * A.transpose() * b;
+    Eigen::Vector2d x = (A.transpose() * A).inverse() * A.transpose() * b;
     double d_ref = x(0);
     double d_new = - x(1);
     Eigen::Vector3d P_ref = f_ref * d_ref;

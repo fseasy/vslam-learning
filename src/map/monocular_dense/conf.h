@@ -1,3 +1,5 @@
+#pragma once
+
 namespace conf {
 
 constexpr int HEIGHT = 480;
