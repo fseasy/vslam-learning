@@ -1,7 +1,6 @@
 // https://www.guyuehome.com/39825
 #include <cmath>
 #include <numeric>
-#include <execution>
 
 #include <opencv2/opencv.hpp>
 #include <sophus/se2.hpp>
@@ -16,6 +15,8 @@ public:
 
     void update(const cv::Mat& ref_img, const cv::Mat& new_img, 
         const Sophus::SE3d& T_new_ref);
+    const cv::Mat& get_depth() const { return depth_; }
+    const cv::Mat& get_cov() const { return cov_; }
 
 private:
     void epipolar_search(
@@ -70,7 +71,7 @@ void NaiveDepthFilter::update(const cv::Mat& ref_img, const cv::Mat& new_img,
             epipolar_search(ref_img, new_img, pnt_ref, T_new_ref,
                 pnt_new, epipolar_direction, ncc);
             if (ncc < 0.85) {
-                std::clog << "ncc is small, not valid match\n";
+                // std::clog << "ncc is small, not valid match\n";
                 continue;
             }
             update_depth(pnt_ref, pnt_new, T_new_ref, epipolar_direction);
@@ -159,9 +160,10 @@ double NaiveDepthFilter::calc_ncc(
             }
         }  
         double value_size = static_cast<double>(ref_values.size());
-        double ref_mean = std::reduce(std::execution::par, 
+        // Apple clang++ 13 don't support parallel algorithm
+        double ref_mean = std::reduce(
             ref_values.begin(), ref_values.end()) / value_size;
-        double new_mean = std::reduce(std::execution::par,
+        double new_mean = std::reduce(
             new_values.begin(), new_values.end()) / value_size;
         double numerator = 0.;
         double denominator1 = 0., denominator2 = 0.;
@@ -217,7 +219,7 @@ void NaiveDepthFilter::update_depth(
      */
 
     Sophus::SE3d T_ref_new = T_new_ref.inverse();
-    Eigen::Vector3d f_newT = T_ref_new.so3() * f_newT;
+    Eigen::Vector3d f_newT = T_ref_new.so3() * f_new;
     Eigen::Matrix<double, 3, 2> A{};
     A.col(0) << f_ref;
     A.col(1) << f_newT;
@@ -232,20 +234,18 @@ void NaiveDepthFilter::update_depth(
 
     /*
     下面的代码我还没有想通——
-    1. 为啥又用 f_ref 乘上 depth_estimate 了？ 不用 P_mean 了？
-    2. 来自 new 的向量，不旋转过来就可以直接在对极几何中用吗？ 难道它们已经都在一个坐标系下了？ 
+     来自 new 的向量，不旋转过来就可以直接在对极几何中用吗？ 难道它们已经都在一个坐标系下了？ 
     不太懂，后面看论文啥的再学习吧，耗在这里解决不了的。
     */
     auto t = b;
-    Eigen::Vector3d p = f_ref * depth_estimate;
     double t_norm = t.norm();
     double alpha = std::acos(f_ref.dot(t) / t_norm);
     Eigen::Vector3d p_new_prime = utils::pixel2camera(point_new + epipolar_direction);
-    p_new_norm.normalize();
-    double beta_prime = std::acos(p_new_norm.dot(-t) / t_norm)
-    constexpr double PI = std::acos(-1.);
-    double gama = PI - alpha - beta_norm;
-    double p_prime_norm = t_norm / std::sin(game) * std::sin(beta_prime);
+    p_new_prime.normalize();
+    double beta_prime = std::acos(p_new_prime.dot(-t) / t_norm);
+    static const double PI = std::acos(-1.);
+    double gama = PI - alpha - beta_prime;
+    double p_prime_norm = t_norm / std::sin(gama) * std::sin(beta_prime);
     double diff = p_prime_norm - depth_estimate; // depth_estimate = p.norm()
     double cov_estimate = diff * diff;
 

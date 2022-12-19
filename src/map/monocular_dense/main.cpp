@@ -43,6 +43,7 @@ int main(int argc, char* argv[]) {
     auto ref_Twc = remode_dataset.get_pose(0U);
     mdf::NaiveDepthFilter depth_filter(
         conf::HEIGHT, conf::WIDTH, conf::INIT_DEPTH, conf::INIT_COV);
+    auto ref_depth = remode_dataset.get_ref_depth(0U);
 
     for (std::size_t i = 1U; i < remode_dataset.size(); ++i) {
         std::clog << "using img " << i << "\n";
@@ -54,7 +55,8 @@ int main(int argc, char* argv[]) {
         }
         // T_current_reference = T_current_word *  T_world_reference
         Sophus::SE3d T_cur_ref = cur_Twc->inverse() * (*ref_Twc);
-        depth_filter.update(ref_img, cur_img, T_cur_ref);
+        depth_filter.update(*ref_img, *cur_img, T_cur_ref);
+        utils::draw_depth(*ref_depth, depth_filter.)
     }
 
     return 0;

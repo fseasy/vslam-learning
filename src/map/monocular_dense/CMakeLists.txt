@@ -20,10 +20,10 @@ message(STATUS "eigen3 include dir =" ${Eigen3_INCLUDE_DIRS})
 message(STATUS "Sophus include dir =" ${Sophus_INCLUDE_DIRS})
 message(STATUS "OpenCV include dir =" ${OpenCV_INCLUDE_DIRS})
 
-add_executable(monocolar_dense main.cpp)
-target_link_libraries(monocolar_dense 
+add_executable(monocular_dense main.cpp)
+target_link_libraries(monocular_dense 
     ${OpenCV_LIBS} 
     Eigen3::Eigen 
     Sophus::Sophus
     fmt::fmt)
-target_include_directories(monocolar_dense PRIVATE ${OpenCV_INCLUDE_DIRS})
+target_include_directories(monocular_dense PRIVATE ${OpenCV_INCLUDE_DIRS})

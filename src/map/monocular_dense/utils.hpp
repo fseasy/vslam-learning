@@ -3,6 +3,7 @@
 #include <cmath>
 
 #include <Eigen/Core>
+#include <opencv2/opencv.hpp>
 
 #include "conf.h"
 
@@ -10,6 +11,8 @@ namespace utils {
 
 Eigen::Vector3d pixel2camera(const Eigen::Vector2d& p);
 Eigen::Vector2d camera2pixel(const Eigen::Vector3d& c);
+void draw_depth(const cv::Mat& truth, const cv::Mat& estimate);
+
 
 bool is_inside_img(const Eigen::Vector2d& p);
 template <typename T>
@@ -57,5 +60,14 @@ double calc_bilinear_interpolated(const cv::Mat& img, const Eigen::Vector2d& p) 
         + (1. - px) * py * img.at<T>(base_y + 1, base_x)
         + px * py * img.at<T>(base_y + 1, base_x + 1);
 }
+
+inline
+void draw_depth(const cv::Mat& truth, const cv::Mat& estimate) {
+    cv::imshow("depth-truch", truth * 0.4);
+    cv::imshow("depth-estimate", estimate * 0.4);
+    cv::imshow("depth-error", truth - estimate);
+    cv::waitKey(10);
+}
+
 
 } // end of namesapce utils
