@@ -44,6 +44,11 @@ int main(int argc, char* argv[]) {
     mdf::NaiveDepthFilter depth_filter(
         conf::HEIGHT, conf::WIDTH, conf::INIT_DEPTH, conf::INIT_COV);
     auto ref_depth = remode_dataset.get_ref_depth(0U);
+    if (!ref_depth) {
+        std::clog << "depth load failed. exit.\n";
+        return 1;
+    }
+    utils::draw_depth(*ref_depth, depth_filter.get_depth());
 
     for (std::size_t i = 1U; i < remode_dataset.size(); ++i) {
         std::clog << "using img " << i << "\n";
@@ -56,7 +61,7 @@ int main(int argc, char* argv[]) {
         // T_current_reference = T_current_word *  T_world_reference
         Sophus::SE3d T_cur_ref = cur_Twc->inverse() * (*ref_Twc);
         depth_filter.update(*ref_img, *cur_img, T_cur_ref);
-        utils::draw_depth(*ref_depth, depth_filter.)
+        utils::draw_depth(*ref_depth, depth_filter.get_depth());
     }
 
     return 0;

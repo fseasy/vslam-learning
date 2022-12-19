@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cmath>
+#include <iostream>
 
 #include <Eigen/Core>
 #include <opencv2/opencv.hpp>
@@ -63,10 +64,11 @@ double calc_bilinear_interpolated(const cv::Mat& img, const Eigen::Vector2d& p) 
 
 inline
 void draw_depth(const cv::Mat& truth, const cv::Mat& estimate) {
-    cv::imshow("depth-truch", truth * 0.4);
+    std::clog << "truth type = " << truth.type() << "\t" 
+        << "estimate type = " << estimate.type() << "\n";
+    cv::imshow("depth-truth", truth * 0.4);
     cv::imshow("depth-estimate", estimate * 0.4);
     cv::imshow("depth-error", truth - estimate);
-    cv::waitKey(10);
 }
 
 

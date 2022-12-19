@@ -10,6 +10,8 @@
 #include <Eigen/Core>
 #include <fmt/core.h>
 
+#include "conf.h"
+
 namespace dataset {
 
 class Dataset {
@@ -88,9 +90,20 @@ std::optional<cv::Mat> Dataset::get_ref_depth(std::size_t index) const {
     const std::string depth_fpath = fmt::format(
         "{}/depthmaps/scene_{:03d}.depth",
         data_dir_, index);
-    auto depth = cv::imread(depth_fpath, cv::IMREAD_UNCHANGED);
-    std::clog << "readed depth type = " << depth.type() << "\n";
-    depth /= 100.;
+    std::ifstream depth_file(depth_fpath);
+    if (!depth_file) {
+        std::clog << "failed to load depth file: " << depth_fpath << "\n";
+        return {};
+    }
+    cv::Mat depth(conf::HEIGHT, conf::WIDTH, CV_64F);
+    for (int y = 0; y < conf::HEIGHT; ++y) {
+        for (int x = 0; x < conf::WIDTH; ++x) {
+            double v{};
+            depth_file >> v;
+            depth.at<double>(y, x) = v / 100.;
+        }
+    }
+    depth_file.close();
     return depth;
 }
 
