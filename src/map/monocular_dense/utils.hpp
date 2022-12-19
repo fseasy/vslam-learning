@@ -64,11 +64,14 @@ double calc_bilinear_interpolated(const cv::Mat& img, const Eigen::Vector2d& p) 
 
 inline
 void draw_depth(const cv::Mat& truth, const cv::Mat& estimate) {
-    std::clog << "truth type = " << truth.type() << "\t" 
-        << "estimate type = " << estimate.type() << "\n";
     cv::imshow("depth-truth", truth * 0.4);
     cv::imshow("depth-estimate", estimate * 0.4);
     cv::imshow("depth-error", truth - estimate);
+    std::clog << "showed\n";
+    // set a small value is OK in mac while disappear soonly in ubuntu.
+    // so we just let it waiting as long as receiving input.
+    // the program is too slow.
+    cv::waitKey();
 }
 
 
